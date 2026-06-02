@@ -1072,6 +1072,14 @@
 
   <!-- CORE LOGIC & INTERACTION SCRIPTS -->
   <script>
+    // --- GLOBAL APP STATE ---
+    let isSessionActive = false;
+    let hasSensorsActive = false;
+    let baseBeta = 0;
+    let baseGamma = 0;
+    let liveScene, liveCamera, liveRenderer;
+    let visualizerGroup, trackerRing, trackerLaser;
+
     // Tab Navigation switching
     function switchTab(tabId) {
       // Toggle Tab Buttons
@@ -1127,8 +1135,6 @@
     // ==============================================
     // THREE.JS LIVE TRACK VISUALIZER
     // ==============================================
-    let liveScene, liveCamera, liveRenderer;
-    let visualizerGroup, trackerRing, trackerLaser;
     
     function initLiveVisualizer() {
       const container = document.getElementById('live-3d-canvas');
@@ -1273,9 +1279,6 @@
     // ==============================================
     // DEVICE TILT / SENSOR INTEGRATION
     // ==============================================
-    let hasSensorsActive = false;
-    let baseBeta = 0;
-    let baseGamma = 0;
 
     function checkDeviceOrientationSupport() {
       // Check if mobile device orientation is supported
@@ -1354,7 +1357,6 @@
     // ==============================================
     // TRACKING SESSION LOGIC (Reps & ROM Counter)
     // ==============================================
-    let isSessionActive = false;
     let repCount = 0;
     let maxSessionAngle = 0;
     let sessionTimerId = null;
