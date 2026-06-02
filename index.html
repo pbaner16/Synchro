@@ -1,0 +1,2336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Synchro — Wireless Motion Intelligence Finger Ring</title>
+  <meta name="description" content="Synchro is a wearable smart ring that captures joint angles, velocity, and movement patterns for physical rehabilitation, fitness training, and athletic performance.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ----------------------------------------------------
+       DESIGN SYSTEM & TOKENS (NON-NEGOTIABLE SPECS)
+       ---------------------------------------------------- */
+    :root {
+      --bg-color: #0A0B0F;
+      --card-bg: #12141A;
+      --accent-color: #00D4C8;
+      --accent-glow: rgba(0, 212, 200, 0.15);
+      --text-primary: #FFFFFF;
+      --text-muted: #9CA3AF;
+      --border-color: rgba(255, 255, 255, 0.08);
+      
+      --font-heading: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      
+      /* Light theme tokens for How It Works break */
+      --light-bg: #F8F9FA;
+      --light-text-primary: #0A0B0F;
+      --light-text-muted: #555C68;
+      --light-border: rgba(10, 11, 15, 0.08);
+    }
+
+    /* ----------------------------------------------------
+       BASE STYLES & RESET
+       ---------------------------------------------------- */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    section {
+      scroll-margin-top: 80px;
+    }
+    
+    body {
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: var(--font-heading);
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+
+    p {
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    button, input {
+      font-family: inherit;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ----------------------------------------------------
+       MOTION SYSTEM (IntersectionObserver & Scroll Rules)
+       ---------------------------------------------------- */
+    .animate-on-scroll {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), 
+                  transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: opacity, transform;
+    }
+    
+    .animate-on-scroll.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* Staggered entries (80ms spacing) */
+    .stagger-container .stagger-child {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: opacity, transform;
+    }
+    
+    .visible.stagger-container .stagger-child,
+    .visible .stagger-child {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .visible.stagger-container .stagger-child:nth-child(1), .visible .stagger-child:nth-child(1) { transition-delay: 80ms; }
+    .visible.stagger-container .stagger-child:nth-child(2), .visible .stagger-child:nth-child(2) { transition-delay: 160ms; }
+    .visible.stagger-container .stagger-child:nth-child(3), .visible .stagger-child:nth-child(3) { transition-delay: 240ms; }
+    .visible.stagger-container .stagger-child:nth-child(4), .visible .stagger-child:nth-child(4) { transition-delay: 320ms; }
+    .visible.stagger-container .stagger-child:nth-child(5), .visible .stagger-child:nth-child(5) { transition-delay: 400ms; }
+    .visible.stagger-container .stagger-child:nth-child(6), .visible .stagger-child:nth-child(6) { transition-delay: 480ms; }
+
+    /* Button Hover Glow Effects */
+    .btn-teal {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--accent-color);
+      color: #0A0B0F;
+      font-weight: 500;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: box-shadow 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 0 0 0 rgba(0, 212, 200, 0);
+    }
+    
+    .btn-teal:hover {
+      box-shadow: 0 0 16px 4px rgba(0, 212, 200, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .btn-teal:active {
+      transform: translateY(0);
+    }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      color: var(--text-primary);
+      font-weight: 500;
+      border: 1px solid var(--border-color);
+      padding: 12px 28px;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+    }
+    
+    .btn-ghost:hover {
+      background-color: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    /* ----------------------------------------------------
+       STICKY NAVIGATION BAR
+       ---------------------------------------------------- */
+    header.main-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 1000;
+      border-bottom: 1px solid transparent;
+      transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                  border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                  backdrop-filter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    header.main-nav.scrolled {
+      background-color: rgba(10, 11, 15, 0.85);
+      border-color: var(--border-color);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    
+    .nav-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 80px;
+    }
+    
+    .logo-wordmark {
+      font-family: var(--font-heading);
+      font-weight: 800;
+      font-size: 24px;
+      letter-spacing: 0.05em;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .logo-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--accent-color);
+      border-radius: 50%;
+      display: inline-block;
+    }
+    
+    .nav-menu {
+      display: none;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+    
+    .nav-link {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      transition: color 0.2s ease;
+    }
+    
+    .nav-link:hover {
+      color: var(--accent-color);
+    }
+    
+    .nav-cta {
+      display: flex;
+      align-items: center;
+    }
+    
+    .nav-cta .btn-teal {
+      padding: 10px 22px;
+      font-size: 14px;
+    }
+    
+    .nav-cta-btn {
+      display: none;
+      color: #FFFFFF !important;
+    }
+    @media (min-width: 768px) {
+      .nav-cta-btn {
+        display: inline-flex;
+      }
+    }
+
+    /* Mobile Nav Toggle Menu (Hidden by default) */
+    .menu-toggle {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      z-index: 1001;
+    }
+    
+    .menu-toggle span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background-color: var(--text-primary);
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    
+    .mobile-menu-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--bg-color);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 32px;
+      transform: translateY(-100%);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    .mobile-menu-overlay.open {
+      transform: translateY(0);
+    }
+    
+    .mobile-menu-overlay .nav-link {
+      font-size: 24px;
+      font-family: var(--font-heading);
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* Hamburger Animation States */
+    .menu-toggle.open span:nth-child(1) {
+      transform: translateY(8px) rotate(45deg);
+    }
+    .menu-toggle.open span:nth-child(2) {
+      opacity: 0;
+    }
+    .menu-toggle.open span:nth-child(3) {
+      transform: translateY(-8px) rotate(-45deg);
+    }
+
+    @media (min-width: 768px) {
+      .nav-menu {
+        display: flex;
+      }
+      .menu-toggle {
+        display: none;
+      }
+    }
+
+    /* ----------------------------------------------------
+       HERO SECTION
+       ---------------------------------------------------- */
+    .hero-section {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding-top: 120px;
+      padding-bottom: 60px;
+      position: relative;
+    }
+    
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 48px;
+      align-items: center;
+      width: 100%;
+    }
+    
+    .hero-text-content {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .hero-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent-color);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    
+    .hero-title {
+      font-size: 42px;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #FFFFFF 40%, #9CA3AF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .hero-body {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 36px;
+      max-width: 520px;
+    }
+    
+    .hero-ctas {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    
+    .hero-visual {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    
+    /* Interactive SVG illustration */
+    .hero-ring-svg {
+      width: 100%;
+      max-width: 440px;
+      height: auto;
+      overflow: visible;
+    }
+    
+    .hero-ring-arc {
+      stroke: var(--accent-color);
+      stroke-width: 1.5;
+      fill: none;
+      stroke-linecap: round;
+      opacity: 0.75;
+      transform-origin: 250px 250px;
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      animation: draw-hero-arc 0.6s ease-out forwards;
+    }
+    
+    .hero-ring-arc:nth-child(1) { animation-delay: 100ms; }
+    .hero-ring-arc:nth-child(2) { animation-delay: 200ms; }
+    .hero-ring-arc:nth-child(3) { animation-delay: 300ms; }
+    
+    @keyframes draw-hero-arc {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+    
+    /* Data pulse dots on arcs */
+    .hero-pulse-dot {
+      fill: var(--accent-color);
+      filter: drop-shadow(0 0 6px var(--accent-color));
+      transform-box: fill-box;
+      transform-origin: center;
+      opacity: 0;
+      animation: pulse-dot-appear 0.6s ease forwards, pulse-scale 2.5s ease-in-out infinite;
+    }
+    
+    .hero-pulse-dot:nth-child(4) { animation-delay: 1.4s; }
+    .hero-pulse-dot:nth-child(5) { animation-delay: 1.7s; }
+    .hero-pulse-dot:nth-child(6) { animation-delay: 2.0s; }
+
+    @keyframes pulse-dot-appear {
+      to { opacity: 1; }
+    }
+    
+    @keyframes pulse-scale {
+      0%, 100% { transform: scale(1); opacity: 0.6; }
+      50% { transform: scale(1.6); opacity: 1; filter: drop-shadow(0 0 10px var(--accent-color)); }
+    }
+    
+    /* Neon Glow Ring Center */
+    .hero-ring-body {
+      fill: #161821;
+      stroke: rgba(255, 255, 255, 0.15);
+      stroke-width: 3;
+    }
+    
+    .hero-ring-inner {
+      fill: #06070a;
+      stroke: rgba(0, 212, 200, 0.4);
+      stroke-width: 1;
+    }
+
+    .hero-ring-glow {
+      stroke: var(--accent-color);
+      stroke-width: 8;
+      fill: none;
+      opacity: 0.15;
+      filter: blur(10px);
+    }
+    
+    .hero-sensor-node {
+      fill: var(--accent-color);
+      animation: node-flash 2s infinite;
+    }
+
+    @keyframes node-flash {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    @media (min-width: 768px) {
+      .hero-title {
+        font-size: 56px;
+      }
+      .hero-body {
+        font-size: 18px;
+      }
+    }
+
+    @media (min-width: 1280px) {
+      .hero-grid {
+        grid-template-columns: 55fr 45fr;
+        gap: 64px;
+      }
+      .hero-title {
+        font-size: 72px;
+      }
+    }
+
+    /* ----------------------------------------------------
+       PRODUCT STATS BAR
+       ---------------------------------------------------- */
+    .stats-bar {
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      background-color: rgba(18, 20, 26, 0.4);
+      padding: 32px 0;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 32px 16px;
+    }
+    
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+    
+    .stat-val {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent-color);
+      margin-bottom: 8px;
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .stat-lbl {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    @media (min-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+      }
+      
+      .stat-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 15%;
+        width: 1px;
+        height: 70%;
+        background-color: var(--border-color);
+      }
+      
+      .stat-val {
+        font-size: 36px;
+      }
+    }
+
+    /* ----------------------------------------------------
+       HOW IT WORKS SECTION (LIGHT THEME BREAK)
+       ---------------------------------------------------- */
+    .how-it-works {
+      background-color: var(--light-bg);
+      color: var(--light-text-primary);
+      padding: 100px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .section-header-light {
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 80px auto;
+    }
+    
+    .section-eyebrow-light {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent-color);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    
+    .section-title-light {
+      font-size: 36px;
+      color: var(--light-text-primary);
+    }
+    
+    .how-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 60px;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .how-col {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      position: relative;
+      background: #FFFFFF;
+      padding: 32px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+      border: 1px solid var(--light-border);
+    }
+    
+    .how-num {
+      font-family: var(--font-heading);
+      font-weight: 800;
+      font-size: 64px;
+      line-height: 1;
+      margin-bottom: 16px;
+      color: transparent;
+      -webkit-text-stroke: 1px var(--accent-color);
+    }
+    
+    .how-icon-box {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 212, 200, 0.08);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      color: var(--accent-color);
+    }
+    
+    .how-col h3 {
+      font-size: 20px;
+      margin-bottom: 12px;
+      color: var(--light-text-primary);
+    }
+    
+    .how-col p {
+      color: var(--light-text-muted);
+      font-size: 15px;
+    }
+    
+    /* Horizontal Connector line (Desktop only) */
+    .connector-svg-desktop {
+      display: none;
+      position: absolute;
+      top: 360px;
+      left: 10%;
+      width: 80%;
+      height: 60px;
+      z-index: 1;
+      pointer-events: none;
+    }
+    
+    /* Vertical Connector line (Mobile only) */
+    .connector-svg-mobile {
+      display: block;
+      position: absolute;
+      top: 240px;
+      left: calc(24px + 32px + 24px); /* aligns with icons approx */
+      width: 4px;
+      height: calc(100% - 380px);
+      z-index: 1;
+      pointer-events: none;
+    }
+    
+    .connector-path {
+      stroke: var(--accent-color);
+      stroke-width: 2;
+      stroke-dasharray: 6 6;
+      stroke-dashoffset: 100;
+      fill: none;
+      transition: stroke-dashoffset 2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    .how-it-works.visible .connector-path {
+      stroke-dashoffset: 0;
+    }
+
+    @media (min-width: 768px) {
+      .connector-svg-mobile {
+        display: none;
+      }
+      .connector-svg-desktop {
+        display: block;
+      }
+      .how-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 32px;
+        background: transparent;
+      }
+      .how-col {
+        background: transparent;
+        padding: 0;
+        border-radius: 0;
+        box-shadow: none;
+        border: none;
+      }
+      .how-num {
+        font-size: 80px;
+      }
+      .section-title-light {
+        font-size: 48px;
+      }
+    }
+
+    /* ----------------------------------------------------
+       USE CASES SECTION
+       ---------------------------------------------------- */
+    .use-cases {
+      padding: 100px 0;
+      background-color: var(--bg-color);
+    }
+    
+    .section-header {
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 64px auto;
+    }
+    
+    .section-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent-color);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    
+    .section-title {
+      font-size: 36px;
+      background: linear-gradient(135deg, #FFFFFF 40%, #9CA3AF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .use-cases-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 30px;
+    }
+    
+    .use-case-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+                  box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    /* Subtle glow on hover */
+    .use-case-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 30px 2px rgba(0, 212, 200, 0.03);
+      border-color: rgba(0, 212, 200, 0.2);
+    }
+    
+    /* Sliding border accent bottom */
+    .use-case-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      height: 3px;
+      background-color: var(--accent-color);
+      transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    .use-case-card:hover::after {
+      width: 100%;
+    }
+    
+    .use-case-icon-box {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background-color: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 28px;
+      color: var(--accent-color);
+    }
+    
+    .use-case-card h3 {
+      font-size: 22px;
+      margin-bottom: 16px;
+    }
+    
+    .use-case-card p {
+      font-size: 15px;
+      color: var(--text-muted);
+    }
+
+    @media (min-width: 768px) {
+      .use-cases-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .section-title {
+        font-size: 48px;
+      }
+    }
+
+    /* ----------------------------------------------------
+       FEATURES GRID
+       ---------------------------------------------------- */
+    .features {
+      padding: 100px 0;
+      background-color: var(--bg-color);
+      border-top: 1px solid var(--border-color);
+    }
+    
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    
+    .feature-tile {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      transition: border-color 0.3s ease;
+    }
+    
+    .feature-tile:hover {
+      border-color: rgba(0, 212, 200, 0.25);
+    }
+    
+    .feature-icon-wrapper {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: rgba(0, 212, 200, 0.05);
+      border-radius: 10px;
+      color: var(--accent-color);
+      margin-bottom: 20px;
+    }
+    
+    .feature-tile h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    
+    .feature-tile p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    @media (min-width: 768px) {
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (min-width: 1280px) {
+      .features-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    /* ----------------------------------------------------
+       APP PREVIEW & MOCKUPS (PARALLAX + HTML/CSS PHONE FRAMES)
+       ---------------------------------------------------- */
+    .app-preview {
+      padding: 120px 0;
+      background-color: var(--bg-color);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Radial Glow Gradient Background behind phone mockup container */
+    .app-preview-glow {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 70vw;
+      height: 70vw;
+      max-width: 800px;
+      max-height: 800px;
+      background: radial-gradient(circle, rgba(0, 212, 200, 0.06) 0%, rgba(10, 11, 15, 0) 70%);
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    .phones-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 40px;
+      width: 100%;
+      max-width: 1000px;
+      margin: 0 auto;
+      z-index: 2;
+      perspective: 1200px;
+      padding-top: 40px;
+    }
+    
+    /* CSS iPhone Frame */
+    .iphone-frame {
+      width: 280px;
+      height: 560px;
+      background-color: #0A0B0F;
+      border: 10px solid #1E2025;
+      border-radius: 40px;
+      position: relative;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8),
+                  0 0 0 1px rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.15s ease-out; /* Smooth follow-scroll */
+    }
+    
+    /* iPhone top bar: dynamic island + status details */
+    .phone-top-bar {
+      height: 38px;
+      width: 100%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+      background-color: #12141A;
+    }
+    
+    .phone-time {
+      font-size: 11px;
+      font-weight: 500;
+      font-family: var(--font-mono);
+      color: #FFF;
+    }
+    
+    .phone-dynamic-island {
+      position: absolute;
+      left: 50%;
+      top: 8px;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 18px;
+      background-color: #000;
+      border-radius: 9px;
+    }
+    
+    .phone-icons {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #FFF;
+    }
+    
+    .phone-icon-item {
+      width: 12px;
+      height: 10px;
+      display: inline-block;
+    }
+    
+    /* Screen Content Base */
+    .phone-screen {
+      flex: 1;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      background-color: #12141A;
+      color: #FFF;
+      font-size: 13px;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    
+    .phone-screen::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .phone-header {
+      font-family: var(--font-heading);
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    /* Phone Screen 1: Dashboard UI */
+    .gauge-wrapper {
+      position: relative;
+      width: 150px;
+      height: 150px;
+      margin: 0 auto 20px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .gauge-svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+    
+    .gauge-track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.05);
+      stroke-width: 10;
+    }
+    
+    .gauge-fill {
+      fill: none;
+      stroke: var(--accent-color);
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      animation: gauge-animate 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.5s;
+    }
+    
+    @keyframes gauge-animate {
+      to { stroke-dashoffset: 12; } /* 88% */
+    }
+    
+    .gauge-val-box {
+      position: absolute;
+      text-align: center;
+    }
+    
+    .gauge-score {
+      font-family: var(--font-mono);
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--text-primary);
+    }
+    
+    .gauge-lbl {
+      font-size: 9px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 4px;
+    }
+    
+    .activity-rings-card {
+      background-color: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    
+    .card-title-mini {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .rings-grid {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .rings-svg-box {
+      width: 60px;
+      height: 60px;
+    }
+    
+    .ring-data-list {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .ring-data-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+    
+    .ring-bullet {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    
+    .ring-bullet.teal { background-color: var(--accent-color); }
+    .ring-bullet.white { background-color: #FFFFFF; }
+    .ring-bullet.muted { background-color: #4B5563; }
+    
+    /* Phone Screen 2: ROM Detail */
+    .rom-arc-box {
+      width: 100%;
+      height: 130px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    
+    .rom-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .rom-stat-tile {
+      background-color: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    
+    .rom-stat-tile .val {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent-color);
+    }
+    
+    .rom-stat-tile .lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    
+    /* Session Replay Timer Bar */
+    .replay-player {
+      background-color: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .replay-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .replay-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--accent-color);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #0A0B0F;
+    }
+    
+    .replay-track-bar {
+      flex: 1;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .replay-progress-fill {
+      width: 45%;
+      height: 100%;
+      background: var(--accent-color);
+      position: absolute;
+      top: 0;
+      left: 0;
+      border-radius: 2px;
+      animation: replay-slider 6s linear infinite;
+    }
+    
+    @keyframes replay-slider {
+      0% { width: 0%; }
+      100% { width: 100%; }
+    }
+    
+    /* Phone Screen 3: Progress Graph */
+    .chart-container {
+      width: 100%;
+      height: 120px;
+      margin-bottom: 20px;
+      background-color: rgba(255,255,255,0.01);
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      padding: 8px;
+    }
+    
+    .chart-days-list {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 10px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-muted);
+    }
+    
+    .summary-card {
+      background-color: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+    
+    .summary-row .label {
+      color: var(--text-muted);
+    }
+    
+    .summary-row .value {
+      font-family: var(--font-mono);
+      font-weight: 500;
+    }
+
+    /* Deskop Layout Positioning */
+    @media (min-width: 1280px) {
+      .phones-container {
+        flex-direction: row;
+        justify-content: space-between;
+        height: 640px;
+        padding-top: 60px;
+      }
+      
+      .phone-left {
+        transform: rotateY(-12deg) rotateX(10deg) rotateZ(-4deg);
+        position: absolute;
+        left: 5%;
+        top: 40px;
+      }
+      
+      .phone-middle {
+        transform: rotateY(0deg) rotateX(8deg) rotateZ(0deg);
+        position: absolute;
+        left: 50%;
+        top: 0;
+        transform: translateX(-50%);
+        z-index: 10;
+        border-color: #272A30;
+      }
+      
+      .phone-right {
+        transform: rotateY(12deg) rotateX(10deg) rotateZ(4deg);
+        position: absolute;
+        right: 5%;
+        top: 40px;
+      }
+      
+      .iphone-frame:hover {
+        transform: translateY(-10px) rotateY(0deg) rotateX(0deg) rotateZ(0deg) scale(1.03) !important;
+        z-index: 50;
+        border-color: var(--accent-color);
+        box-shadow: 0 30px 60px rgba(0,0,0,0.8), 0 0 20px rgba(0, 212, 200, 0.2);
+      }
+    }
+
+    /* ----------------------------------------------------
+       EARLY ACCESS waitlist signup
+       ---------------------------------------------------- */
+    .early-access {
+      padding: 120px 0;
+      background-color: var(--bg-color);
+      border-top: 1px solid var(--border-color);
+      position: relative;
+    }
+    
+    .ea-container {
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .ea-heading {
+      font-size: 36px;
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+    
+    .ea-subhead {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+      max-width: 460px;
+    }
+    
+    /* Email capture form */
+    .ea-form {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .ea-input {
+      flex: 1;
+      background-color: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 9999px;
+      padding: 16px 28px;
+      font-size: 15px;
+      color: #FFF;
+      outline: none;
+      transition: border-color 0.3s ease, background-color 0.3s ease;
+    }
+    
+    .ea-input:focus {
+      border-color: var(--accent-color);
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+    
+    .ea-form .btn-teal {
+      padding: 16px 32px;
+      font-size: 15px;
+    }
+    
+    .ea-fineprint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 48px;
+    }
+    
+    /* Progress bar spots claimed */
+    .progress-wrapper {
+      width: 100%;
+      background-color: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: left;
+    }
+    
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .progress-val-text {
+      color: var(--accent-color);
+    }
+    
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background-color: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .progress-bar-fill {
+      width: 0%; /* Animate on scroll view */
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-color) 0%, #0099FF 100%);
+      border-radius: 4px;
+      transition: width 1.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @media (min-width: 768px) {
+      .ea-heading {
+        font-size: 48px;
+      }
+      .ea-form {
+        flex-direction: row;
+        gap: 12px;
+        background-color: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border-color);
+        border-radius: 9999px;
+        padding: 6px;
+      }
+      .ea-input {
+        border: none;
+        background-color: transparent;
+        padding: 12px 24px;
+      }
+      .ea-input:focus {
+        background-color: transparent;
+      }
+      .ea-form .btn-teal {
+        padding: 12px 28px;
+      }
+    }
+
+    /* ----------------------------------------------------
+       FOOTER
+       ---------------------------------------------------- */
+    footer.main-footer {
+      background-color: #06070a;
+      border-top: 1px solid var(--border-color);
+      padding: 80px 0 40px 0;
+    }
+    
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 48px;
+      margin-bottom: 60px;
+    }
+    
+    .footer-left {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    
+    .footer-tagline {
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 240px;
+    }
+    
+    .footer-center {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .footer-links-title {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-primary);
+      font-weight: 700;
+    }
+    
+    .footer-links-list {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px 24px;
+    }
+    
+    .footer-link-item a {
+      font-size: 14px;
+      color: var(--text-muted);
+      transition: color 0.2s ease;
+    }
+    
+    .footer-link-item a:hover {
+      color: var(--accent-color);
+    }
+    
+    .footer-socials {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+    }
+    
+    .social-icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      transition: color 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
+    }
+    
+    .social-icon-btn:hover {
+      color: var(--accent-color);
+      border-color: rgba(0, 212, 200, 0.3);
+      background-color: rgba(0, 212, 200, 0.02);
+    }
+    
+    .footer-right {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .footer-right-links {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .footer-bottom-bar {
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      padding-top: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+    }
+    
+    .copyright-text {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    @media (min-width: 768px) {
+      .footer-grid {
+        grid-template-columns: 2fr 3fr 1.5fr;
+        gap: 32px;
+      }
+      .footer-links-list {
+        flex-direction: row;
+        max-width: 400px;
+      }
+      .footer-bottom-bar {
+        flex-direction: row;
+        justify-content: space-between;
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- MOBILE MENU OVERLAY -->
+  <div class="mobile-menu-overlay" id="mobileMenu">
+    <a href="#features" class="nav-link" onclick="toggleMobileMenu()">Features</a>
+    <a href="#how-it-works" class="nav-link" onclick="toggleMobileMenu()">How It Works</a>
+    <a href="#use-cases" class="nav-link" onclick="toggleMobileMenu()">Use Cases</a>
+    <a href="#early-access" class="nav-link" onclick="toggleMobileMenu()">Pricing</a>
+    <a href="#early-access" class="btn-teal" onclick="toggleMobileMenu()">Join Waitlist</a>
+  </div>
+
+  <!-- NAVIGATION HEADER -->
+  <header class="main-nav" id="navbar">
+    <div class="container nav-container">
+      <a href="#" class="logo-wordmark">
+        Synchro<span class="logo-dot"></span>
+      </a>
+      
+      <ul class="nav-menu">
+        <li><a href="#features" class="nav-link">Features</a></li>
+        <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
+        <li><a href="#use-cases" class="nav-link">Use Cases</a></li>
+        <li><a href="#early-access" class="nav-link">Pricing</a></li>
+      </ul>
+      
+      <div class="nav-cta">
+        <a href="#early-access" class="btn-teal nav-cta-btn">Join Waitlist</a>
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle Navigation Menu" onclick="toggleMobileMenu()">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO SECTION -->
+    <section class="hero-section">
+      <div class="container hero-grid">
+        <div class="hero-text-content">
+          <span class="hero-eyebrow">Wireless Motion Intelligence</span>
+          <h1 class="hero-title">
+            Move better.<br>
+            Recover faster.<br>
+            Perform smarter.
+          </h1>
+          <p class="hero-body">
+            Synchro is a finger ring that captures every joint angle, velocity, and movement pattern — wirelessly — and turns it into actionable insight for rehab, training, or peak performance.
+          </p>
+          <div class="hero-ctas">
+            <a href="#early-access" class="btn-teal">Get Early Access</a>
+            <a href="#how-it-works" class="btn-ghost">See How It Works &rarr;</a>
+          </div>
+        </div>
+        
+        <div class="hero-visual">
+          <!-- Concentric Ring Arcs Vector Graphic -->
+          <svg class="hero-ring-svg" viewBox="0 0 500 500" alt="Synchro Smart Ring and sensor range visualization">
+            <defs>
+              <radialGradient id="ringGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#00D4C8" stop-opacity="0.25" />
+                <stop offset="100%" stop-color="#0A0B0F" stop-opacity="0" />
+              </radialGradient>
+              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#2D3142" />
+                <stop offset="50%" stop-color="#0F111A" />
+                <stop offset="100%" stop-color="#2D3142" />
+              </linearGradient>
+            </defs>
+            
+            <!-- Glow background -->
+            <circle cx="250" cy="250" r="160" fill="url(#ringGlow)" />
+            
+            <!-- Radiating concentric sensor arcs (dash-arrays animated via CSS) -->
+            <!-- Outer Arc -->
+            <path class="hero-ring-arc" d="M 50 250 A 200 200 0 0 1 450 250" pathLength="100" />
+            <!-- Middle Arc -->
+            <path class="hero-ring-arc" d="M 90 250 A 160 160 0 0 1 410 250" pathLength="100" />
+            <!-- Inner Arc -->
+            <path class="hero-ring-arc" d="M 130 250 A 120 120 0 0 1 370 250" pathLength="100" />
+            
+            <!-- Pulse dot tracking elements along arcs -->
+            <circle class="hero-pulse-dot" cx="210" cy="74" r="6" />
+            <circle class="hero-pulse-dot" cx="390" cy="180" r="4.5" />
+            <circle class="hero-pulse-dot" cx="110" cy="190" r="5" />
+            
+            <!-- Smart Ring Body visual -->
+            <g transform="translate(0, 0)">
+              <!-- Ring glow outline -->
+              <ellipse cx="250" cy="250" rx="66" ry="32" class="hero-ring-glow" />
+              <!-- Outer Ring Shell -->
+              <ellipse cx="250" cy="250" rx="62" ry="28" fill="url(#ringGrad)" stroke="rgba(255, 255, 255, 0.12)" stroke-width="2" />
+              <!-- Inner Finger Hole -->
+              <ellipse cx="250" cy="246" rx="52" ry="22" fill="#0A0B0F" stroke="rgba(0, 212, 200, 0.3)" stroke-width="1" />
+              <!-- Sensor Node Accent -->
+              <path d="M 235 240 Q 250 246 265 240" fill="none" stroke="var(--accent-color)" stroke-width="3" stroke-linecap="round" class="hero-sensor-node" />
+            </g>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRODUCT STATS BAR -->
+    <section class="stats-bar">
+      <div class="container stats-grid">
+        <div class="stat-item">
+          <span class="stat-val">&lt;7g</span>
+          <span class="stat-lbl">Ultra-lightweight</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-val">6-axis IMU</span>
+          <span class="stat-lbl">Motion sensor</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-val">7+ days</span>
+          <span class="stat-lbl">Battery life</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-val">&plusmn;0.5&deg;</span>
+          <span class="stat-lbl">Accuracy</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS SECTION (LIGHT BREAK) -->
+    <section class="how-it-works animate-on-scroll" id="how-it-works">
+      <!-- Animated SVG Dash connector behind steps -->
+      <!-- Desktop connector -->
+      <svg class="connector-svg-desktop" viewBox="0 0 1000 60" preserveAspectRatio="none">
+        <path class="connector-path" d="M 10 30 Q 250 5, 500 30 T 990 30" pathLength="100" />
+      </svg>
+      <!-- Mobile connector -->
+      <svg class="connector-svg-mobile" viewBox="0 0 4 500" preserveAspectRatio="none">
+        <path class="connector-path" d="M 2 0 L 2 500" pathLength="100" />
+      </svg>
+      
+      <div class="container">
+        <div class="section-header-light">
+          <span class="section-eyebrow-light">Workflow</span>
+          <h2 class="section-title-light">How it works</h2>
+        </div>
+        
+        <div class="how-grid stagger-container">
+          <!-- Step 1 -->
+          <div class="how-col stagger-child">
+            <span class="how-num">01</span>
+            <div class="how-icon-box">
+              <!-- Wear Icon -->
+              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="7" />
+                <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round" />
+              </svg>
+            </div>
+            <h3>Wear</h3>
+            <p>Slides onto any finger. Comfortable enough to forget it's there.</p>
+          </div>
+          
+          <!-- Step 2 -->
+          <div class="how-col stagger-child">
+            <span class="how-num">02</span>
+            <div class="how-icon-box">
+              <!-- Track Icon -->
+              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h3>Track</h3>
+            <p>Captures joint angles, velocity, and movement patterns in real time via 6-axis IMU.</p>
+          </div>
+          
+          <!-- Step 3 -->
+          <div class="how-col stagger-child">
+            <span class="how-num">03</span>
+            <div class="how-icon-box">
+              <!-- Analyze Icon -->
+              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21.21 15.89A10 10 0 1 1 8 2.83" stroke-linecap="round"/>
+                <path d="M22 12A10 10 0 0 0 12 2v10z" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h3>Analyze</h3>
+            <p>The companion app surfaces session replays, progress trends, and clinician-ready reports.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- USE CASES -->
+    <section class="use-cases animate-on-scroll" id="use-cases">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">Applications</span>
+          <h2 class="section-title">Designed for tracking</h2>
+        </div>
+        
+        <div class="use-cases-grid stagger-container">
+          <!-- Rehab -->
+          <div class="use-case-card stagger-child">
+            <div class="use-case-icon-box">
+              <!-- cross/medical -->
+              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
+            <h3>Rehabilitation</h3>
+            <p>Track range-of-motion recovery after surgery or injury. Share progress reports directly with your physical therapist.</p>
+          </div>
+          
+          <!-- Fitness -->
+          <div class="use-case-card stagger-child">
+            <div class="use-case-icon-box">
+              <!-- dumbbell/heart rate -->
+              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M6.5 6.5h11M6.5 17.5h11M12 3v18M3 6.5h3.5M17.5 6.5H21M3 17.5h3.5M17.5 17.5H21" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h3>Fitness</h3>
+            <p>Auto-log reps, monitor form, and catch asymmetries before they become injuries.</p>
+          </div>
+          
+          <!-- Performance -->
+          <div class="use-case-card stagger-child">
+            <div class="use-case-icon-box">
+              <!-- Target -->
+              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="12" r="6" />
+                <circle cx="12" cy="12" r="2" />
+              </svg>
+            </div>
+            <h3>Performance</h3>
+            <p>Help athletes and musicians analyze micro-movements to sharpen technique and prevent overuse.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES GRID -->
+    <section class="features animate-on-scroll" id="features">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">Specifications</span>
+          <h2 class="section-title">Hardware capability</h2>
+        </div>
+        
+        <div class="features-grid stagger-container">
+          <!-- 1 -->
+          <div class="feature-tile stagger-child">
+            <div class="feature-icon-wrapper">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h3>Always-on tracking</h3>
+            <p>passive background monitoring, no button to press</p>
+          </div>
+          <!-- 2 -->
+          <div class="feature-tile stagger-child">
+            <div class="feature-icon-wrapper">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h3>Wireless sync</h3>
+            <p>Bluetooth LE, syncs automatically when near your phone</p>
+          </div>
+          <!-- 3 -->
+          <div class="feature-tile stagger-child">
+            <div class="feature-icon-wrapper">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                <path d="M12 18h.01" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h3>iOS & Android</h3>
+            <p>companion app with real-time dashboard and session history</p>
+          </div>
+          <!-- 4 -->
+          <div class="feature-tile stagger-child">
+            <div class="feature-icon-wrapper">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h3>Clinician mode</h3>
+            <p>export shareable PDF/CSV reports for remote care teams</p>
+          </div>
+          <!-- 5 -->
+          <div class="feature-tile stagger-child">
+            <div class="feature-icon-wrapper">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="2" y="7" width="16" height="12" rx="2" ry="2" />
+                <path d="M6 7V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3M22 11v4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h3>7-day battery</h3>
+            <p>charge weekly, not daily</p>
+          </div>
+          <!-- 6 -->
+          <div class="feature-tile stagger-child">
+            <div class="feature-icon-wrapper">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h3>Water resistant</h3>
+            <p>IP68, wear it in the shower or pool</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- APP PREVIEW SECTION (PARALLAX IPHONE FRAMES) -->
+    <section class="app-preview animate-on-scroll" id="app-preview">
+      <div class="app-preview-glow"></div>
+      
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">Companion App</span>
+          <h2 class="section-title">Telemetry in your hand</h2>
+        </div>
+        
+        <div class="phones-container">
+          <!-- PHONE 1: DASHBOARD -->
+          <div class="iphone-frame phone-left" id="phone1">
+            <div class="phone-top-bar">
+              <span class="phone-time">09:41</span>
+              <div class="phone-dynamic-island"></div>
+              <div class="phone-icons">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M2 11.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg>
+              </div>
+            </div>
+            
+            <div class="phone-screen">
+              <div class="phone-header">
+                <span>Dashboard</span>
+                <span class="logo-dot"></span>
+              </div>
+              
+              <!-- Circular Movement Gauge -->
+              <div class="gauge-wrapper">
+                <svg class="gauge-svg" viewBox="0 0 120 120">
+                  <circle class="gauge-track" cx="60" cy="60" r="50" />
+                  <circle class="gauge-fill" cx="60" cy="60" r="50" pathLength="100" />
+                </svg>
+                <div class="gauge-val-box">
+                  <span class="gauge-score">88</span>
+                  <span class="gauge-lbl">Move Index</span>
+                </div>
+              </div>
+              
+              <!-- Daily Rings Card -->
+              <div class="activity-rings-card">
+                <div class="card-title-mini">Daily Rings</div>
+                <div class="rings-grid">
+                  <div class="rings-svg-box">
+                    <svg viewBox="0 0 80 80" width="100%" height="100%">
+                      <!-- Outer ring -->
+                      <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="6"/>
+                      <circle cx="40" cy="40" r="32" fill="none" stroke="var(--accent-color)" stroke-width="6" stroke-dasharray="200" stroke-dashoffset="40" stroke-linecap="round"/>
+                      <!-- Inner ring -->
+                      <circle cx="40" cy="40" r="22" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="6"/>
+                      <circle cx="40" cy="40" r="22" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-dasharray="140" stroke-dashoffset="35" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <div class="ring-data-list">
+                    <div class="ring-data-row">
+                      <span><span class="ring-bullet teal"></span>Active</span>
+                      <span class="phone-time">45m</span>
+                    </div>
+                    <div class="ring-data-row">
+                      <span><span class="ring-bullet white"></span>Goal ROM</span>
+                      <span class="phone-time">92%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Connection State -->
+              <div style="background-color:rgba(0,212,200,0.05); border:1px solid rgba(0,212,200,0.15); border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-top:auto;">
+                <span style="color:var(--accent-color); font-weight:500;">Device Connected</span>
+                <span class="phone-time" style="color:var(--accent-color);">100% batt</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- PHONE 2: SESSION DETAIL -->
+          <div class="iphone-frame phone-middle" id="phone2">
+            <div class="phone-top-bar">
+              <span class="phone-time">09:42</span>
+              <div class="phone-dynamic-island"></div>
+              <div class="phone-icons">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M2 11.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg>
+              </div>
+            </div>
+            
+            <div class="phone-screen">
+              <div class="phone-header" style="font-size:14px; font-weight:700;">
+                <span>&larr; Session ROM</span>
+                <span style="font-family:var(--font-mono); font-size:11px; color:var(--accent-color);">LIVE</span>
+              </div>
+              
+              <!-- Flexion Arc SVG visualization -->
+              <div class="rom-arc-box">
+                <svg viewBox="0 0 160 120" width="100%" height="100%">
+                  <!-- Baseline arc -->
+                  <path d="M 20 100 A 60 60 0 0 1 140 100" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="4" stroke-dasharray="4 4" />
+                  <!-- Live flexion indicator path -->
+                  <path d="M 20 100 A 60 60 0 0 1 125 45" fill="none" stroke="var(--accent-color)" stroke-width="6" stroke-linecap="round" />
+                  <!-- Cursor -->
+                  <circle cx="125" cy="45" r="6" fill="#FFFFFF" filter="drop-shadow(0 0 4px var(--accent-color))" />
+                  <!-- Angle label inside arc -->
+                  <text x="80" y="90" text-anchor="middle" fill="#FFFFFF" font-family="var(--font-heading)" font-weight="800" font-size="28">112&deg;</text>
+                  <text x="80" y="105" text-anchor="middle" fill="var(--text-muted)" font-family="var(--font-body)" font-size="9" letter-spacing="0.05em">JOINT ANGLE</text>
+                </svg>
+              </div>
+              
+              <!-- ROM Stat Tiles -->
+              <div class="rom-stats-grid">
+                <div class="rom-stat-tile">
+                  <div class="val">45</div>
+                  <div class="lbl">Rep Count</div>
+                </div>
+                <div class="rom-stat-tile">
+                  <div class="val">240&deg;/s</div>
+                  <div class="lbl">Peak Vel</div>
+                </div>
+              </div>
+              
+              <!-- Session Replay Controls -->
+              <div class="replay-player">
+                <div class="card-title-mini" style="margin-bottom:0;">Rehab Session #12</div>
+                <div class="replay-controls">
+                  <button class="replay-btn" aria-label="Play Replay">
+                    <svg width="8" height="10" fill="#0A0B0F" viewBox="0 0 8 10"><path d="M 0 0 L 8 5 L 0 10 Z"/></svg>
+                  </button>
+                  <div class="replay-track-bar">
+                    <div class="replay-progress-fill"></div>
+                  </div>
+                  <span class="phone-time" style="font-size:10px; color:var(--text-muted);">02:14</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- PHONE 3: PROGRESS -->
+          <div class="iphone-frame phone-right" id="phone3">
+            <div class="phone-top-bar">
+              <span class="phone-time">09:42</span>
+              <div class="phone-dynamic-island"></div>
+              <div class="phone-icons">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M2 11.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg>
+              </div>
+            </div>
+            
+            <div class="phone-screen">
+              <div class="phone-header">
+                <span>Progress</span>
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2zm-5 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6zm-5 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-4z"/></svg>
+              </div>
+              
+              <!-- Line Chart Container -->
+              <div class="chart-container">
+                <svg viewBox="0 0 180 90" width="100%" height="100%">
+                  <defs>
+                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="var(--accent-color)" stop-opacity="0.3"/>
+                      <stop offset="100%" stop-color="var(--accent-color)" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  
+                  <!-- Gridlines -->
+                  <line x1="0" y1="20" x2="180" y2="20" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+                  <line x1="0" y1="50" x2="180" y2="50" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+                  <line x1="0" y1="80" x2="180" y2="80" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+                  
+                  <!-- Shaded area below graph path -->
+                  <path d="M 0 70 Q 30 50 60 55 T 120 30 T 180 15 L 180 90 L 0 90 Z" fill="url(#chartGrad)" />
+                  <!-- Wavy Trend Line -->
+                  <path d="M 0 70 Q 30 50 60 55 T 120 30 T 180 15" fill="none" stroke="var(--accent-color)" stroke-width="2.5" stroke-linecap="round" />
+                  
+                  <!-- Selected Datapoint node -->
+                  <circle cx="120" cy="30" r="4.5" fill="#FFFFFF" stroke="var(--accent-color)" stroke-width="1.5" />
+                  <!-- Tooltip -->
+                  <rect x="105" y="5" rx="4" ry="4" width="30" height="15" fill="#1E2025" stroke="var(--border-color)" stroke-width="1" />
+                  <text x="120" y="15" text-anchor="middle" fill="#FFFFFF" font-family="var(--font-mono)" font-size="8" font-weight="700">92</text>
+                </svg>
+              </div>
+              <div class="chart-days-list">
+                <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+              </div>
+              
+              <!-- Metrics Summary list -->
+              <div class="summary-card" style="margin-top:16px;">
+                <div class="summary-row">
+                  <span class="label">Avg ROM</span>
+                  <span class="value" style="color:var(--accent-color);">114&deg;</span>
+                </div>
+                <div class="summary-row">
+                  <span class="label">Consistency</span>
+                  <span class="value">98%</span>
+                </div>
+                <div class="summary-row">
+                  <span class="label">Active Streak</span>
+                  <span class="value">12 days</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- EARLY ACCESS WAITLIST SECTION -->
+    <section class="early-access animate-on-scroll" id="early-access">
+      <div class="container ea-container">
+        <h2 class="ea-heading">Be first to move smarter.</h2>
+        <p class="ea-subhead">Join 1,200+ people on the waitlist. First 500 get early-bird pricing.</p>
+        
+        <!-- Formspree Integration Form -->
+        <form class="ea-form" action="https://formspree.io/f/REPLACE_WITH_ID" method="POST" id="waitlistForm">
+          <input type="email" name="email" class="ea-input" placeholder="your@email.com" required aria-label="Email Address">
+          <button type="submit" class="btn-teal">Reserve My Spot &rarr;</button>
+        </form>
+        
+        <p class="ea-fineprint">Fine print: No spam. Unsubscribe anytime.</p>
+        
+        <!-- Spots claimed progress bar -->
+        <div class="progress-wrapper stagger-child">
+          <div class="progress-labels">
+            <span>Progress</span>
+            <span class="progress-val-text"><span id="spotsClaimedText">847</span> / 1,000 spots claimed</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="spotsProgressBar"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="main-footer">
+    <div class="container footer-grid">
+      
+      <!-- Footer Left (Brand & Tagline) -->
+      <div class="footer-left animate-on-scroll">
+        <a href="#" class="logo-wordmark">
+          Synchro<span class="logo-dot"></span>
+        </a>
+        <p class="footer-tagline">Your movement. Measured.</p>
+        
+        <!-- Socials -->
+        <div class="footer-socials">
+          <a href="#" class="social-icon-btn" aria-label="Twitter X Link">
+            <!-- Twitter X SVG path -->
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865l8.875 11.633Z"/>
+            </svg>
+          </a>
+          <a href="#" class="social-icon-btn" aria-label="Instagram Link">
+            <!-- Instagram SVG path -->
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.917 3.917 0 0 0-1.417.923A3.927 3.927 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.916 3.916 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.926 3.926 0 0 0-.923-1.417A3.911 3.911 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.999 0h.002zm-.008 1.442h.018c2.135 0 2.391.008 3.235.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599.28.28.453.546.598.92.11.281.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.47 2.47 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.11-.704.24-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.478 2.478 0 0 1-.92-.598 2.48 2.48 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233 0-2.136.008-2.388.046-3.231.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92.28-.28.546-.453.92-.598.282-.11.705-.24 1.485-.276.738-.034 1.024-.044 2.515-.045v.002zm4.988 1.328a.96.96 0 1 0 0 1.92.96.96 0 0 0 0-1.92zm-4.27 1.122a4.109 4.109 0 1 0 0 8.217 4.109 4.109 0 0 0 0-8.217zm0 1.441a2.667 2.667 0 1 1 0 5.334 2.667 2.667 0 0 1 0-5.334z"/>
+            </svg>
+          </a>
+          <a href="#" class="social-icon-btn" aria-label="LinkedIn Link">
+            <!-- LinkedIn SVG path -->
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M0 1.146C0 .513.526 0 1.175 0h13.65C15.474 0 16 .513 16 1.146v13.708c0 .633-.526 1.146-1.175 1.146H1.175C.526 16 0 15.487 0 14.854V1.146zm4.943 12.248V6.169H2.542v7.225h2.401zm-1.2-8.212c.837 0 1.358-.554 1.358-1.248-.015-.709-.52-1.248-1.342-1.248-.822 0-1.359.54-1.359 1.248 0 .694.521 1.248 1.327 1.248h.016zm4.908 8.212V9.359c0-.216.016-.432.08-.586.173-.431.568-.878 1.232-.878.869 0 1.216.662 1.216 1.634v3.865h2.401V9.25c0-2.22-1.184-3.252-2.764-3.252-1.274 0-1.845.7-2.165 1.193v.025h-.016a5.54 5.54 0 0 1 .016-.025V6.169h-2.4c.03.678 0 7.225 0 7.225h2.4z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Footer Center (Navigation Directory) -->
+      <div class="footer-center animate-on-scroll">
+        <span class="footer-links-title">Product</span>
+        <ul class="footer-links-list">
+          <li class="footer-link-item"><a href="#features">Features</a></li>
+          <li class="footer-link-item"><a href="#how-it-works">How It Works</a></li>
+          <li class="footer-link-item"><a href="#use-cases">Use Cases</a></li>
+          <li class="footer-link-item"><a href="#early-access">Early Access</a></li>
+        </ul>
+      </div>
+      
+      <!-- Footer Right (Policies) -->
+      <div class="footer-right animate-on-scroll">
+        <span class="footer-links-title">Legal</span>
+        <div class="footer-right-links">
+          <div class="footer-link-item"><a href="#">Privacy Policy</a></div>
+          <div class="footer-link-item"><a href="#">Terms of Service</a></div>
+          <div class="footer-link-item"><a href="#">Contact Support</a></div>
+        </div>
+      </div>
+      
+    </div>
+    
+    <!-- Footer Bottom Line -->
+    <div class="container">
+      <div class="footer-bottom-bar">
+        <span class="copyright-text">&copy; 2025 Synchro. All rights reserved.</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ----------------------------------------------------
+       INTERACTIVITY AND MOTION LOGIC (VANILLA JS)
+       ---------------------------------------------------- -->
+  <script>
+    // 1. Mobile Menu Overlay Toggle
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      const toggle = document.getElementById('menuToggle');
+      const isOpened = menu.classList.contains('open');
+      
+      if (isOpened) {
+        menu.classList.remove('open');
+        toggle.classList.remove('open');
+      } else {
+        menu.classList.add('open');
+        toggle.classList.add('open');
+      }
+    }
+
+    // 2. Navigation Scroll Background Adjuster
+    window.addEventListener('scroll', () => {
+      const nav = document.getElementById('navbar');
+      if (window.scrollY > 40) {
+        nav.classList.add('scrolled');
+      } else {
+        nav.classList.remove('scrolled');
+      }
+    });
+
+    // 3. Scroll Intersection Observer for Elements
+    const scrollObserverOptions = {
+      root: null,
+      threshold: 0.15,
+      rootMargin: '0px 0px -40px 0px'
+    };
+
+    const scrollObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          
+          // Custom triggers for specific sections
+          if (entry.target.id === 'early-access') {
+            triggerSpotsBarAnimation();
+          }
+          
+          // Stop observing once animation triggers (makes it single run)
+          observer.unobserve(entry.target);
+        }
+      });
+    }, scrollObserverOptions);
+
+    // Attach elements to Observer
+    document.querySelectorAll('.animate-on-scroll').forEach(el => {
+      scrollObserver.observe(el);
+    });
+
+    // 4. Progress Spots Bar Fill Animation
+    function triggerSpotsBarAnimation() {
+      const bar = document.getElementById('spotsProgressBar');
+      // Set to 84.7% representing 847 / 1000 claims
+      bar.style.width = '84.7%';
+    }
+
+    // 5. Parallax Scroll Effect for Phones Container (Only Runs When Visible)
+    const appPreviewSection = document.getElementById('app-preview');
+    const phoneLeft = document.getElementById('phone1');
+    const phoneMiddle = document.getElementById('phone2');
+    const phoneRight = document.getElementById('phone3');
+
+    let isAppPreviewVisible = false;
+
+    const previewVisibilityObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        isAppPreviewVisible = entry.isIntersecting;
+      });
+    }, { root: null, threshold: 0.05 });
+
+    previewVisibilityObserver.observe(appPreviewSection);
+
+    window.addEventListener('scroll', () => {
+      if (!isAppPreviewVisible) return;
+      
+      // Determine viewport positions
+      const rect = appPreviewSection.getBoundingClientRect();
+      const scrolledRatio = (window.innerHeight - rect.top) / (window.innerHeight + rect.height);
+      
+      // We check if it is large screen before performing transform offsets
+      if (window.innerWidth >= 1280) {
+        // Range: maps scroll percentage to transform pixels
+        // Middle phone travels slower than left/right
+        const sideYOffset = (scrolledRatio - 0.5) * -110; 
+        const middleYOffset = (scrolledRatio - 0.5) * -40;
+        
+        phoneLeft.style.transform = `rotateY(-12deg) rotateX(10deg) rotateZ(-4deg) translateY(${sideYOffset}px)`;
+        phoneRight.style.transform = `rotateY(12deg) rotateX(10deg) rotateZ(4deg) translateY(${sideYOffset}px)`;
+        phoneMiddle.style.transform = `rotateY(0deg) rotateX(8deg) rotateZ(0deg) translateY(${middleYOffset}px) translateX(-50%)`;
+      } else {
+        // Reset styles for responsive stacking layouts
+        phoneLeft.style.transform = '';
+        phoneRight.style.transform = '';
+        phoneMiddle.style.transform = '';
+      }
+    });
+
+    // 6. Waitlist Form Intercept & Local Validation Feedback
+    const waitlistForm = document.getElementById('waitlistForm');
+    waitlistForm.addEventListener('submit', (e) => {
+      const input = waitlistForm.querySelector('input[type="email"]');
+      if (!input.value || !input.value.includes('@')) {
+        e.preventDefault();
+        alert('Please enter a valid email address.');
+        return;
+      }
+      
+      const action = waitlistForm.getAttribute('action');
+      if (action.includes('REPLACE_WITH_ID')) {
+        e.preventDefault();
+        showToast("Success! You've joined the waitlist.");
+        waitlistForm.reset();
+      }
+    });
+
+    // Custom Toast Notification System
+    function showToast(message) {
+      const existingToast = document.getElementById('synchroToast');
+      if (existingToast) {
+        existingToast.remove();
+      }
+      
+      const toast = document.createElement('div');
+      toast.id = 'synchroToast';
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background-color: #12141A;
+        color: #FFFFFF;
+        border: 1px solid #00D4C8;
+        padding: 16px 24px;
+        border-radius: 12px;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 10px 30px rgba(0, 212, 200, 0.15);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 14px;
+        transform: translateY(100px);
+        opacity: 0;
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      `;
+      
+      const icon = document.createElement('span');
+      icon.innerHTML = `<svg width="18" height="18" fill="none" stroke="#00D4C8" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17L4 12" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      icon.style.display = 'inline-flex';
+      
+      const text = document.createElement('span');
+      text.innerText = message;
+      
+      toast.appendChild(icon);
+      toast.appendChild(text);
+      document.body.appendChild(toast);
+      
+      toast.offsetHeight; // force reflow
+      
+      toast.style.transform = 'translateY(0)';
+      toast.style.opacity = '1';
+      
+      setTimeout(() => {
+        toast.style.transform = 'translateY(20px)';
+        toast.style.opacity = '0';
+        setTimeout(() => {
+          toast.remove();
+        }, 400);
+      }, 4000);
+    }
+  </script>
+</body>
+</html>
