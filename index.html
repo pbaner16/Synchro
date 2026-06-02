@@ -11,6 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
   
+  <!-- Three.js Library for Realistic 3D Models -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  
   <style>
     /* ----------------------------------------------------
        DESIGN SYSTEM & TOKENS (NON-NEGOTIABLE SPECS)
@@ -390,88 +393,22 @@
       position: relative;
     }
     
-    /* Interactive SVG illustration */
-    .hero-ring-svg {
+    /* Interactive 3D Canvas Illustration */
+    #hero-3d-container {
       width: 100%;
       max-width: 440px;
-      height: auto;
+      height: 440px;
+      position: relative;
       overflow: visible;
     }
     
-    .hero-ring-arc {
-      stroke: var(--accent-color);
-      stroke-width: 1.5;
-      fill: none;
-      stroke-linecap: round;
-      opacity: 0.75;
-      transform-origin: 250px 250px;
-      stroke-dasharray: 100;
-      stroke-dashoffset: 100;
-      animation: draw-hero-arc 0.6s ease-out forwards;
-    }
-    
-    .hero-ring-arc:nth-child(1) { animation-delay: 100ms; }
-    .hero-ring-arc:nth-child(2) { animation-delay: 200ms; }
-    .hero-ring-arc:nth-child(3) { animation-delay: 300ms; }
-    
-    @keyframes draw-hero-arc {
-      to {
-        stroke-dashoffset: 0;
-      }
-    }
-    
-    /* Data pulse dots on arcs */
-    .hero-pulse-dot {
-      fill: var(--accent-color);
-      filter: drop-shadow(0 0 6px var(--accent-color));
-      transform-box: fill-box;
-      transform-origin: center;
-      opacity: 0;
-      animation: pulse-dot-appear 0.6s ease forwards, pulse-scale 2.5s ease-in-out infinite;
-    }
-    
-    .hero-pulse-dot:nth-child(4) { animation-delay: 1.4s; }
-    .hero-pulse-dot:nth-child(5) { animation-delay: 1.7s; }
-    .hero-pulse-dot:nth-child(6) { animation-delay: 2.0s; }
-
-    @keyframes pulse-dot-appear {
-      to { opacity: 1; }
-    }
-    
-    @keyframes pulse-scale {
-      0%, 100% { transform: scale(1); opacity: 0.6; }
-      50% { transform: scale(1.6); opacity: 1; filter: drop-shadow(0 0 10px var(--accent-color)); }
-    }
-    
-    /* Neon Glow Ring Center */
-    .hero-ring-body {
-      fill: #161821;
-      stroke: rgba(255, 255, 255, 0.15);
-      stroke-width: 3;
-    }
-    
-    .hero-ring-inner {
-      fill: #06070a;
-      stroke: rgba(0, 212, 200, 0.4);
-      stroke-width: 1;
-    }
-
-    .hero-ring-glow {
-      stroke: var(--accent-color);
-      stroke-width: 8;
-      fill: none;
-      opacity: 0.15;
-      filter: blur(10px);
-    }
-    
-    .hero-sensor-node {
-      fill: var(--accent-color);
-      animation: node-flash 2s infinite;
-    }
-
-    @keyframes node-flash {
-      0%, 100% { opacity: 0.4; }
-      50% { opacity: 1; }
+    #hero-3d-container canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100% !important;
+      height: 100% !important;
+      outline: none;
     }
 
     @media (min-width: 768px) {
@@ -1603,48 +1540,7 @@
         </div>
         
         <div class="hero-visual">
-          <!-- Concentric Ring Arcs Vector Graphic -->
-          <svg class="hero-ring-svg" viewBox="0 0 500 500" alt="Synchro Smart Ring and sensor range visualization">
-            <defs>
-              <radialGradient id="ringGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#00D4C8" stop-opacity="0.25" />
-                <stop offset="100%" stop-color="#0A0B0F" stop-opacity="0" />
-              </radialGradient>
-              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#2D3142" />
-                <stop offset="50%" stop-color="#0F111A" />
-                <stop offset="100%" stop-color="#2D3142" />
-              </linearGradient>
-            </defs>
-            
-            <!-- Glow background -->
-            <circle cx="250" cy="250" r="160" fill="url(#ringGlow)" />
-            
-            <!-- Radiating concentric sensor arcs (dash-arrays animated via CSS) -->
-            <!-- Outer Arc -->
-            <path class="hero-ring-arc" d="M 50 250 A 200 200 0 0 1 450 250" pathLength="100" />
-            <!-- Middle Arc -->
-            <path class="hero-ring-arc" d="M 90 250 A 160 160 0 0 1 410 250" pathLength="100" />
-            <!-- Inner Arc -->
-            <path class="hero-ring-arc" d="M 130 250 A 120 120 0 0 1 370 250" pathLength="100" />
-            
-            <!-- Pulse dot tracking elements along arcs -->
-            <circle class="hero-pulse-dot" cx="210" cy="74" r="6" />
-            <circle class="hero-pulse-dot" cx="390" cy="180" r="4.5" />
-            <circle class="hero-pulse-dot" cx="110" cy="190" r="5" />
-            
-            <!-- Smart Ring Body visual -->
-            <g transform="translate(0, 0)">
-              <!-- Ring glow outline -->
-              <ellipse cx="250" cy="250" rx="66" ry="32" class="hero-ring-glow" />
-              <!-- Outer Ring Shell -->
-              <ellipse cx="250" cy="250" rx="62" ry="28" fill="url(#ringGrad)" stroke="rgba(255, 255, 255, 0.12)" stroke-width="2" />
-              <!-- Inner Finger Hole -->
-              <ellipse cx="250" cy="246" rx="52" ry="22" fill="#0A0B0F" stroke="rgba(0, 212, 200, 0.3)" stroke-width="1" />
-              <!-- Sensor Node Accent -->
-              <path d="M 235 240 Q 250 246 265 240" fill="none" stroke="var(--accent-color)" stroke-width="3" stroke-linecap="round" class="hero-sensor-node" />
-            </g>
-          </svg>
+          <div id="hero-3d-container"></div>
         </div>
       </div>
     </section>
@@ -2331,6 +2227,214 @@
         }, 400);
       }, 4000);
     }
+  </script>
+
+  <!-- Three.js Hero 3D Ring Animation -->
+  <script>
+    (function() {
+      const container = document.getElementById('hero-3d-container');
+      if (!container) return;
+
+      // 1. Scene, Camera, Renderer
+      const scene = new THREE.Scene();
+      
+      const width = container.clientWidth || 440;
+      const height = container.clientHeight || 440;
+      const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+      camera.position.z = 8;
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+
+      // 2. Lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+      scene.add(ambientLight);
+
+      // Main directional light for glossy metal highlights
+      const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.5);
+      dirLight1.position.set(5, 8, 5);
+      scene.add(dirLight1);
+
+      // Accent teal light casting highlights from bottom left
+      const tealPoint = new THREE.PointLight(0x00D4C8, 2.5, 12);
+      tealPoint.position.set(-4, -2, 3);
+      scene.add(tealPoint);
+
+      // Backlight for edge separation
+      const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      backLight.position.set(-5, -5, -5);
+      scene.add(backLight);
+
+      // 3. Ring Group & Meshes
+      const ringGroup = new THREE.Group();
+      
+      // Outer shell (metallic dark titanium)
+      // TorusGeometry(radius, tube, radialSegments, tubularSegments)
+      const outerGeo = new THREE.TorusGeometry(1.85, 0.32, 32, 120);
+      const outerMat = new THREE.MeshStandardMaterial({
+        color: 0x111319,
+        metalness: 0.95,
+        roughness: 0.12,
+        flatShading: false
+      });
+      const outerMesh = new THREE.Mesh(outerGeo, outerMat);
+      ringGroup.add(outerMesh);
+
+      // Inner band (glowing teal sensor interface)
+      const innerGeo = new THREE.TorusGeometry(1.75, 0.22, 32, 120);
+      const innerMat = new THREE.MeshStandardMaterial({
+        color: 0x05070a,
+        emissive: 0x00D4C8,
+        emissiveIntensity: 2.2,
+        roughness: 0.4,
+        metalness: 0.1
+      });
+      const innerMesh = new THREE.Mesh(innerGeo, innerMat);
+      ringGroup.add(innerMesh);
+
+      // Glowing sensor node (on top of the ring)
+      const sensorGeo = new THREE.BoxGeometry(0.35, 0.18, 0.5);
+      const sensorMat = new THREE.MeshStandardMaterial({
+        color: 0x00D4C8,
+        emissive: 0x00D4C8,
+        emissiveIntensity: 3.5,
+      });
+      const sensorMesh = new THREE.Mesh(sensorGeo, sensorMat);
+      sensorMesh.position.set(0, 2.0, 0);
+      ringGroup.add(sensorMesh);
+
+      // Set initial orientation
+      ringGroup.rotation.x = Math.PI / 3;
+      ringGroup.rotation.y = Math.PI / 6;
+      scene.add(ringGroup);
+
+      // 4. Stylized 3D Orbital Rings (glowing telemetry lines)
+      const arcGroup = new THREE.Group();
+      scene.add(arcGroup);
+
+      function createArc(radius, rotationOffset, speed, colorVal) {
+        const points = [];
+        const segments = 120;
+        // Drawing an elegant semi-circular arc
+        for (let i = 0; i <= segments; i++) {
+          const theta = (i / segments) * Math.PI; 
+          points.push(new THREE.Vector3(Math.cos(theta) * radius, 0, Math.sin(theta) * radius));
+        }
+        const geom = new THREE.BufferGeometry().setFromPoints(points);
+        const mat = new THREE.LineBasicMaterial({
+          color: colorVal,
+          transparent: true,
+          opacity: 0.5
+        });
+        const line = new THREE.Line(geom, mat);
+        line.rotation.x = Math.PI / 2; // Lay flat
+        return { mesh: line, speed, rotOffset: rotationOffset };
+      }
+
+      const arcs = [
+        createArc(2.8, 0.1, 0.003, 0x00D4C8),
+        createArc(2.5, -0.15, -0.004, 0x00D4C8),
+        createArc(2.2, 0.25, 0.002, 0xffffff)
+      ];
+
+      arcs.forEach((arc, index) => {
+        // Tilt each arc uniquely to create a 3D orbit effect
+        arc.mesh.rotation.x = Math.PI / 2 + arc.rotOffset;
+        arc.mesh.rotation.y = (index - 1) * 0.15;
+        arcGroup.add(arc.mesh);
+      });
+
+      // 5. Pulsing sensor tracking particles
+      const particleGeo = new THREE.SphereGeometry(0.06, 16, 16);
+      const particleMat = new THREE.MeshBasicMaterial({ color: 0x00D4C8 });
+      const particles = [];
+
+      for (let i = 0; i < 3; i++) {
+        const p = new THREE.Mesh(particleGeo, particleMat);
+        scene.add(p);
+        particles.push({
+          mesh: p,
+          arcIndex: i,
+          angle: Math.random() * Math.PI,
+          speed: 0.008 + Math.random() * 0.008
+        });
+      }
+
+      // 6. Interaction & Mouse Parallax
+      let mouseX = 0;
+      let mouseY = 0;
+      let targetX = 0;
+      let targetY = 0;
+
+      document.addEventListener('mousemove', (e) => {
+        mouseX = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
+        mouseY = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
+      });
+
+      // 7. Animation Loop
+      const clock = new THREE.Clock();
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const delta = clock.getDelta();
+        const time = clock.getElapsedTime();
+
+        // Smoothly interpolate mouse target rotations (parallax)
+        targetX += (mouseX - targetX) * 0.05;
+        targetY += (mouseY - targetY) * 0.05;
+
+        // Apply slow idle rotations + mouse tilt
+        ringGroup.rotation.y = time * 0.2 + targetX * 0.4;
+        ringGroup.rotation.x = Math.PI / 3.2 + targetY * 0.25;
+        
+        // Spin the telemetry arcs
+        arcs.forEach((arc) => {
+          arc.mesh.rotation.z += arc.speed;
+        });
+
+        // Animate particles along the arcs
+        particles.forEach(p => {
+          const radius = 2.8 - p.arcIndex * 0.3;
+          p.angle += p.speed;
+          if (p.angle > Math.PI) p.angle = 0; // wrap around the semi-circle
+          
+          const arcRotX = arcs[p.arcIndex].mesh.rotation.x;
+          const arcRotY = arcs[p.arcIndex].mesh.rotation.y;
+          const arcRotZ = arcs[p.arcIndex].mesh.rotation.z;
+
+          // Compute 3D position
+          const localX = Math.cos(p.angle) * radius;
+          const localZ = Math.sin(p.angle) * radius;
+
+          // Apply rotation transformation
+          const pos = new THREE.Vector3(localX, 0, localZ);
+          pos.applyAxisAngle(new THREE.Vector3(1, 0, 0), arcRotX);
+          pos.applyAxisAngle(new THREE.Vector3(0, 1, 0), arcRotY);
+          pos.applyAxisAngle(new THREE.Vector3(0, 0, 1), arcRotZ);
+
+          p.mesh.position.copy(pos);
+          
+          // Micro-pulsing scale
+          p.mesh.scale.setScalar(1 + Math.sin(time * 6 + p.arcIndex) * 0.25);
+        });
+
+        renderer.render(scene, camera);
+      }
+
+      // Handle Resize
+      window.addEventListener('resize', () => {
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      });
+
+      animate();
+    })();
   </script>
 </body>
 </html>
