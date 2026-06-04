@@ -23,9 +23,14 @@ This project contains two primary pages that can be run locally without any inst
   - Data & Metrics: `JetBrains Mono` (Tabular tech figures)
 - **Interactivity:** Fluid scroll-driven entries via `IntersectionObserver` and responsive grid layouts.
 
-### 📱 Companion Web App (`app.html`)
+### 📱 Companion Web App & Instrument Dexterity Trainer (`app.html`)
 - **Overview Dashboard:** Features a dynamic animated progress ring showing the daily "Move Index", activity streaks, and battery telemetry.
-- **Live Track (ROM Session):** Features a Three.js 3D joint visualizer. On mobile devices, tipping the phone utilizes the **DeviceOrientation API** to rotate the 3D model in real time. Also includes a Schmitt-trigger repetition counter that increments automatically when joint angles flex and return past targets.
+- **Instrument Dexterity Visualizer:** A high-fidelity 3D kinesthetic tracking environment featuring a procedurally-modeled **5-finger human hand** (with realistic skin tones, joint knuckles, fingernails, and the smart ring on the index finger).
+- **Instrument Modes:**
+  - **Violin:** The hand forms a realistic bow grip to move the bow across the bridge and steel strings, tracking bow strokes and angle deviations.
+  - **Guitar:** The index finger presses down on an angled fretboard with glowing fretted strings, tracking chord changes and fret alignment accuracy.
+  - **Piano:** The hand rests over a 3-key piano keyboard, dynamically bending knuckles to press the keys down in response to user motion.
+- **Device Telemetry:** Automatically binds to the **DeviceOrientation API** on mobile devices for accelerometer-driven play simulation, falling back to interactive mouse dragging on desktop.
 - **Analytics & History:** Interactive weekly range of motion columns and mock clinical PDF exports.
 
 ---

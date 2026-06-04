@@ -441,6 +441,66 @@
       background-color: #10B981;
       box-shadow: 0 0 6px #10B981;
     }
+
+    /* Clinical Telemetry HUD */
+    .clinical-hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      pointer-events: none;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      z-index: 10;
+    }
+    
+    .hud-item {
+      background: rgba(18, 20, 26, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 5px 8px;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(4px);
+    }
+    
+    .hud-label {
+      color: rgba(255, 255, 255, 0.4);
+      margin-bottom: 1px;
+      font-size: 7px;
+      letter-spacing: 0.05em;
+    }
+    
+    .hud-value {
+      color: #00D4C8;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    
+    .hud-status {
+      grid-column: span 3;
+      background: rgba(0, 212, 200, 0.08);
+      border: 1px solid rgba(0, 212, 200, 0.15);
+      color: #00D4C8;
+      text-align: center;
+      padding: 3px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 8px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 2px;
+      transition: all 0.25s ease;
+    }
+    
+    .hud-status.warning {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #EF4444;
+    }
     
     .live-stats-row {
       display: grid;
@@ -491,6 +551,42 @@
       height: 100%;
     }
     
+    /* Instrument Selector Segmented Control */
+    .instrument-selector {
+      display: flex;
+      background-color: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 4px;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+    
+    .inst-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 13px;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.25s ease, color 0.25s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .inst-btn.active {
+      background-color: var(--card-bg-elevated);
+      color: var(--accent-color);
+      border: 1px solid rgba(0, 212, 200, 0.15);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
     .control-actions {
       display: flex;
       flex-direction: column;
@@ -808,10 +904,33 @@
            ============================================== -->
       <section class="tab-panel" id="panel-track">
         <h2 class="panel-title">Live Session</h2>
+
+        <!-- Instrument Selection Bar -->
+        <div class="instrument-selector">
+          <button class="inst-btn active" id="btn-inst-violin" onclick="setInstrumentMode('violin')">🎻 Violin</button>
+          <button class="inst-btn" id="btn-inst-guitar" onclick="setInstrumentMode('guitar')">🎸 Guitar</button>
+          <button class="inst-btn" id="btn-inst-piano" onclick="setInstrumentMode('piano')">🎹 Piano</button>
+        </div>
         
         <!-- Live Visualizer Canvas -->
         <div class="live-visual-wrapper">
           <div id="live-3d-canvas"></div>
+          
+          <div class="clinical-hud" id="clinicalHud">
+            <div class="hud-item">
+              <span class="hud-label">TENSION LEVEL</span>
+              <span class="hud-value" id="hud-tension-val">12%</span>
+            </div>
+            <div class="hud-item">
+              <span class="hud-label">PRESSURE FORCE</span>
+              <span class="hud-value" id="hud-pressure-val">1.2 N</span>
+            </div>
+            <div class="hud-item">
+              <span class="hud-label">ANGULAR STRESS</span>
+              <span class="hud-value" id="hud-stress-val">3°</span>
+            </div>
+            <div class="hud-status" id="hud-status-badge">MECHANICS: OPTIMAL</div>
+          </div>
           
           <div class="live-tilt-overlay">
             <div class="tilt-status-badge">
@@ -825,11 +944,11 @@
         <div class="live-stats-row">
           <div class="live-stat-box">
             <div class="live-stat-num" id="liveAngle">0&deg;</div>
-            <div class="live-stat-lbl">Angle</div>
+            <div class="live-stat-lbl" id="liveAngleLabel">Bow Angle</div>
           </div>
           <div class="live-stat-box">
             <div class="live-stat-num" id="liveReps">0</div>
-            <div class="live-stat-lbl">Reps Count</div>
+            <div class="live-stat-lbl" id="liveRepsLabel">Bow Strokes</div>
           </div>
         </div>
         
@@ -1077,8 +1196,30 @@
     let hasSensorsActive = false;
     let baseBeta = 0;
     let baseGamma = 0;
+    let relativeBeta = 0;
+    let relativeGamma = 0;
     let liveScene, liveCamera, liveRenderer;
     let visualizerGroup, trackerRing, trackerLaser;
+
+    // Instrument Tracking State
+    let currentInstrumentMode = 'violin'; // 'violin', 'guitar', 'piano'
+    let instrumentGroup = null;
+    let violinBow = null;
+    let guitarStrings = [];
+    let pianoKeys = [];
+    let simulatedInputX = 0;
+    let simulatedInputY = 0;
+
+    // Realistic Hand/Finger Joints
+    let indexMCP = null, indexPIP = null, indexDIP = null;
+    let middleMCP = null, middlePIP = null, middleDIP = null;
+    let ringMCP = null, ringPIP = null, ringDIP = null;
+    let pinkyMCP = null, pinkyPIP = null, pinkyDIP = null;
+    let thumbMCP = null, thumbIP = null;
+
+    // Biomechanical Visual Overlays (sketch style)
+    let pressureArrow = null;
+    let biomechLines = [];
 
     // Tab Navigation switching
     function switchTab(tabId) {
@@ -1133,9 +1274,361 @@
     });
 
     // ==============================================
-    // THREE.JS LIVE TRACK VISUALIZER
+    // THREE.JS LIVE TRACK VISUALIZER & INSTRUMENTS
     // ==============================================
     
+    function setInstrumentMode(mode) {
+      currentInstrumentMode = mode;
+      
+      // Update selector buttons styling
+      document.querySelectorAll('.inst-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      const activeBtn = document.getElementById(`btn-inst-${mode}`);
+      if (activeBtn) activeBtn.classList.add('active');
+      
+      // Update metric labels
+      const angleLabel = document.getElementById('liveAngleLabel');
+      const repsLabel = document.getElementById('liveRepsLabel');
+      
+      if (mode === 'violin') {
+        if (angleLabel) angleLabel.innerText = 'Bow Angle';
+        if (repsLabel) repsLabel.innerText = 'Bow Strokes';
+      } else if (mode === 'guitar') {
+        if (angleLabel) angleLabel.innerText = 'Fret Accuracy';
+        if (repsLabel) repsLabel.innerText = 'Chords Played';
+      } else if (mode === 'piano') {
+        if (angleLabel) angleLabel.innerText = 'Press Angle';
+        if (repsLabel) repsLabel.innerText = 'Keys Pressed';
+      }
+      
+      // Rebuild 3D visualizer objects
+      buildInstrumentScene();
+      
+      // Reset rep-related states
+      repCount = 0;
+      maxSessionAngle = 0;
+      document.getElementById('liveReps').innerText = '0';
+      document.getElementById('liveAngle').innerText = '0°';
+    }
+
+    function buildInstrumentScene() {
+      if (!liveScene || !visualizerGroup) return;
+      
+      // Clear previous children of visualizerGroup
+      while (visualizerGroup.children.length > 0) {
+        visualizerGroup.remove(visualizerGroup.children[0]);
+      }
+      
+      // Clear instrumentGroup if it exists
+      if (instrumentGroup) {
+        liveScene.remove(instrumentGroup);
+      }
+      
+      // Create new instrumentGroup
+      instrumentGroup = new THREE.Group();
+      liveScene.add(instrumentGroup);
+      
+      // Materials for realistic solid hand
+      const skinMat = new THREE.MeshStandardMaterial({
+        color: 0xE2A98F,
+        roughness: 0.55,
+        metalness: 0.05
+      });
+      const nailMat = new THREE.MeshStandardMaterial({
+        color: 0xF4B3B2,
+        roughness: 0.25,
+        metalness: 0.1
+      });
+
+      // Helper function to build a solid finger segment
+      function createFingerSegment(length, width, skinMaterial, nailMaterial, hasNail) {
+        const segGroup = new THREE.Group();
+        
+        // 1. Solid skin cylinder
+        const cylGeo = new THREE.CylinderGeometry(width * 0.95, width, length, 16);
+        cylGeo.translate(0, length / 2, 0); // shift origin to base joint
+        const cyl = new THREE.Mesh(cylGeo, skinMaterial);
+        segGroup.add(cyl);
+        
+        // 2. Joint knuckle blend sphere
+        const sphereGeo = new THREE.SphereGeometry(width * 1.12, 16, 16);
+        const sphere = new THREE.Mesh(sphereGeo, skinMaterial);
+        segGroup.add(sphere);
+        
+        if (hasNail) {
+          // Fingernail plate
+          const nailGeo = new THREE.BoxGeometry(width * 0.72, 0.012, length * 0.42);
+          const nail = new THREE.Mesh(nailGeo, nailMaterial);
+          nail.position.set(0, length * 0.78, width * 0.88);
+          segGroup.add(nail);
+        }
+        
+        return segGroup;
+      }
+
+      // 1. Palm base
+      const palmGeo = new THREE.BoxGeometry(0.7, 0.2, 0.75);
+      const palm = new THREE.Mesh(palmGeo, skinMat);
+      palm.position.set(0.3, -0.1, -0.3);
+      visualizerGroup.add(palm);
+
+      // 2. Index Finger
+      indexMCP = new THREE.Group();
+      indexMCP.position.set(0.1, 0, 0);
+      visualizerGroup.add(indexMCP);
+      
+      const indexProximal = createFingerSegment(0.7, 0.11, skinMat, nailMat, false);
+      indexMCP.add(indexProximal);
+
+      // Smart Ring wrapped around index proximal phalanx
+      const ringGeo = new THREE.TorusGeometry(0.16, 0.05, 16, 64);
+      const ringMat = new THREE.MeshStandardMaterial({
+        color: 0x111319,
+        metalness: 0.95,
+        roughness: 0.15,
+        emissive: 0x00D4C8,
+        emissiveIntensity: 0.4
+      });
+      trackerRing = new THREE.Mesh(ringGeo, ringMat);
+      trackerRing.position.y = 0.35;
+      trackerRing.rotation.x = Math.PI / 2;
+      indexProximal.add(trackerRing);
+
+      indexPIP = new THREE.Group();
+      indexPIP.position.y = 0.7;
+      indexProximal.add(indexPIP);
+      const indexMiddle = createFingerSegment(0.55, 0.10, skinMat, nailMat, false);
+      indexPIP.add(indexMiddle);
+
+      indexDIP = new THREE.Group();
+      indexDIP.position.y = 0.55;
+      indexMiddle.add(indexDIP);
+      const indexDistal = createFingerSegment(0.4, 0.09, skinMat, nailMat, true);
+      indexDIP.add(indexDistal);
+
+      // Biomechanical Pressure Arrow at the tip of the index finger
+      const arrowDir = new THREE.Vector3(0, 1, 0);
+      const arrowOrigin = new THREE.Vector3(0, 0.4, 0);
+      pressureArrow = new THREE.ArrowHelper(arrowDir, arrowOrigin, 0.8, 0xFF5533, 0.2, 0.1);
+      indexDistal.add(pressureArrow);
+
+      // 3. Middle Finger
+      middleMCP = new THREE.Group();
+      middleMCP.position.set(0.28, 0, -0.05);
+      visualizerGroup.add(middleMCP);
+      
+      const middleProximal = createFingerSegment(0.75, 0.115, skinMat, nailMat, false);
+      middleMCP.add(middleProximal);
+
+      middlePIP = new THREE.Group();
+      middlePIP.position.y = 0.75;
+      middleProximal.add(middlePIP);
+      const middleMiddle = createFingerSegment(0.6, 0.105, skinMat, nailMat, false);
+      middlePIP.add(middleMiddle);
+
+      middleDIP = new THREE.Group();
+      middleDIP.position.y = 0.6;
+      middleMiddle.add(middleDIP);
+      const middleDistal = createFingerSegment(0.42, 0.095, skinMat, nailMat, true);
+      middleDIP.add(middleDistal);
+
+      // 4. Ring Finger
+      ringMCP = new THREE.Group();
+      ringMCP.position.set(0.46, 0, -0.1);
+      visualizerGroup.add(ringMCP);
+      
+      const ringProximal = createFingerSegment(0.7, 0.11, skinMat, nailMat, false);
+      ringMCP.add(ringProximal);
+
+      ringPIP = new THREE.Group();
+      ringPIP.position.y = 0.7;
+      ringProximal.add(ringPIP);
+      const ringMiddle = createFingerSegment(0.55, 0.10, skinMat, nailMat, false);
+      ringPIP.add(ringMiddle);
+
+      ringDIP = new THREE.Group();
+      ringDIP.position.y = 0.55;
+      ringMiddle.add(ringDIP);
+      const ringDistal = createFingerSegment(0.4, 0.09, skinMat, nailMat, true);
+      ringDIP.add(ringDistal);
+
+      // 5. Pinky Finger
+      pinkyMCP = new THREE.Group();
+      pinkyMCP.position.set(0.62, 0, -0.15);
+      visualizerGroup.add(pinkyMCP);
+      
+      const pinkyProximal = createFingerSegment(0.55, 0.095, skinMat, nailMat, false);
+      pinkyMCP.add(pinkyProximal);
+
+      pinkyPIP = new THREE.Group();
+      pinkyPIP.position.y = 0.55;
+      pinkyProximal.add(pinkyPIP);
+      const pinkyMiddle = createFingerSegment(0.42, 0.09, skinMat, nailMat, false);
+      pinkyPIP.add(pinkyMiddle);
+
+      pinkyDIP = new THREE.Group();
+      pinkyDIP.position.y = 0.42;
+      pinkyMiddle.add(pinkyDIP);
+      const pinkyDistal = createFingerSegment(0.35, 0.08, skinMat, nailMat, true);
+      pinkyDIP.add(pinkyDistal);
+
+      // 6. Thumb Finger
+      thumbMCP = new THREE.Group();
+      thumbMCP.position.set(-0.02, -0.05, 0.05);
+      thumbMCP.rotation.set(0.5, 0, 1.0); // oppose thumb base orientation
+      visualizerGroup.add(thumbMCP);
+      
+      const thumbProximal = createFingerSegment(0.6, 0.13, skinMat, nailMat, false);
+      thumbMCP.add(thumbProximal);
+
+      thumbIP = new THREE.Group();
+      thumbIP.position.y = 0.6;
+      thumbProximal.add(thumbIP);
+      const thumbDistal = createFingerSegment(0.45, 0.12, skinMat, nailMat, true);
+      thumbIP.add(thumbDistal);
+
+      // 7. Laser Tracking Ray pointing outwards
+      const laserGeo = new THREE.CylinderGeometry(0.015, 0.015, 2.0, 8);
+      const laserMat = new THREE.MeshBasicMaterial({
+        color: 0x00D4C8,
+        transparent: true,
+        opacity: 0.6
+      });
+      trackerLaser = new THREE.Mesh(laserGeo, laserMat);
+      trackerLaser.position.set(0, 1.2, 0); 
+      visualizerGroup.add(trackerLaser);
+
+      // Reset positioning
+      visualizerGroup.position.set(0, 0, 0);
+      visualizerGroup.rotation.set(0.2, -0.4, 0);
+      
+      // Build instrument specifics
+      if (currentInstrumentMode === 'violin') {
+        // --- VIOLIN SCENE ---
+        // Violin bridge (brown arched shape)
+        const bridgeGeo = new THREE.BoxGeometry(1.6, 0.8, 0.15);
+        const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.8 });
+        const bridge = new THREE.Mesh(bridgeGeo, bridgeMat);
+        bridge.position.set(0, -1.0, -1.0);
+        instrumentGroup.add(bridge);
+        
+        // Violin Strings (4 metal wires resting on bridge)
+        for (let i = 0; i < 4; i++) {
+          const stringGeo = new THREE.CylinderGeometry(0.015, 0.015, 5, 8);
+          const stringMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.3 });
+          const string = new THREE.Mesh(stringGeo, stringMat);
+          string.position.set(-0.45 + i * 0.3, -0.6, -1.0);
+          string.rotation.x = Math.PI / 2;
+          instrumentGroup.add(string);
+        }
+        
+        // Violin Bow Group
+        violinBow = new THREE.Group();
+        
+        // Bow stick (red-brown cylinder)
+        const stickGeo = new THREE.CylinderGeometry(0.035, 0.035, 4.8, 8);
+        const stickMat = new THREE.MeshStandardMaterial({ color: 0x5C2E0B, roughness: 0.4 });
+        const stick = new THREE.Mesh(stickGeo, stickMat);
+        stick.rotation.z = Math.PI / 2;
+        violinBow.add(stick);
+        
+        // Bow hair (thin glowing white cylinder parallel to stick)
+        const hairGeo = new THREE.CylinderGeometry(0.012, 0.012, 4.8, 8);
+        const hairMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.4 });
+        const hair = new THREE.Mesh(hairGeo, hairMat);
+        hair.position.set(0, -0.06, 0);
+        hair.rotation.z = Math.PI / 2;
+        violinBow.add(hair);
+        
+        // Bow frog (black block at the right end)
+        const frogGeo = new THREE.BoxGeometry(0.12, 0.15, 0.1);
+        const frogMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+        const frog = new THREE.Mesh(frogGeo, frogMat);
+        frog.position.set(2.2, -0.05, 0);
+        violinBow.add(frog);
+        
+        // Position bow sitting on strings, attached to finger
+        violinBow.position.set(0, -0.5, -0.8);
+        instrumentGroup.add(violinBow);
+        
+      } else if (currentInstrumentMode === 'guitar') {
+        // --- GUITAR SCENE ---
+        // Guitar fretboard (dark rosewood box)
+        const boardGeo = new THREE.BoxGeometry(1.6, 5.0, 0.1);
+        const boardMat = new THREE.MeshStandardMaterial({ color: 0x1B120B, roughness: 0.9 });
+        const board = new THREE.Mesh(boardGeo, boardMat);
+        board.position.set(0, 0, -1.2);
+        board.rotation.x = -Math.PI / 6; // Angled fretboard
+        instrumentGroup.add(board);
+        
+        // Guitar Frets (silver wires perpendicular to neck)
+        for (let i = 0; i < 5; i++) {
+          const fretGeo = new THREE.BoxGeometry(1.6, 0.03, 0.03);
+          const fretMat = new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.9 });
+          const fret = new THREE.Mesh(fretGeo, fretMat);
+          const y = -1.8 + i * 0.9;
+          fret.position.set(0, y * Math.cos(Math.PI/6) - 1.2, y * Math.sin(Math.PI/6));
+          fret.rotation.x = -Math.PI / 6;
+          instrumentGroup.add(fret);
+        }
+        
+        // Guitar Strings (6 strings running along the fretboard)
+        guitarStrings = [];
+        for (let i = 0; i < 6; i++) {
+          const stringGeo = new THREE.CylinderGeometry(0.015 - i * 0.002, 0.015 - i * 0.002, 5.0, 8);
+          const stringMat = new THREE.MeshStandardMaterial({
+            color: 0xaaaaaa,
+            metalness: 0.8,
+            roughness: 0.2,
+            emissive: 0x00D4C8,
+            emissiveIntensity: 0.0
+          });
+          const string = new THREE.Mesh(stringGeo, stringMat);
+          const x = -0.6 + i * 0.24;
+          string.position.set(x, 0, -1.15);
+          string.rotation.x = -Math.PI / 6;
+          instrumentGroup.add(string);
+          guitarStrings.push(string);
+        }
+        
+      } else if (currentInstrumentMode === 'piano') {
+        // --- PIANO SCENE ---
+        pianoKeys = [];
+        const numKeys = 3;
+        
+        const keysContainer = new THREE.Group();
+        keysContainer.position.set(0, -0.8, -1.0);
+        instrumentGroup.add(keysContainer);
+        
+        for (let i = 0; i < numKeys; i++) {
+          const keyGroup = new THREE.Group();
+          
+          // White key body
+          const keyBodyGeo = new THREE.BoxGeometry(0.65, 0.15, 2.5);
+          const keyBodyMat = new THREE.MeshStandardMaterial({
+            color: 0xdddddd,
+            roughness: 0.1,
+            metalness: 0.1,
+            emissive: 0x00D4C8,
+            emissiveIntensity: 0.0
+          });
+          const keyBody = new THREE.Mesh(keyBodyGeo, keyBodyMat);
+          keyBody.position.set(0, 0, -1.25);
+          keyGroup.add(keyBody);
+          
+          keyGroup.position.set(-0.8 + i * 0.8, 0, 1.25);
+          keysContainer.add(keyGroup);
+          pianoKeys.push(keyGroup);
+        }
+        
+        visualizerGroup.position.set(0, 0.4, 0);
+      }
+    }
+
+    let isDragging = false;
+    let prevMousePos = { x: 0, y: 0 };
+
     function initLiveVisualizer() {
       const container = document.getElementById('live-3d-canvas');
       if (!container) return;
@@ -1168,55 +1661,15 @@
       visualizerGroup = new THREE.Group();
       liveScene.add(visualizerGroup);
 
-      // Simulated Finger Bone (grey metallic cylinder)
-      const fingerGeo = new THREE.CylinderGeometry(0.55, 0.5, 3.2, 32);
-      const fingerMat = new THREE.MeshStandardMaterial({
-        color: 0x222530,
-        roughness: 0.7,
-        metalness: 0.2
-      });
-      const finger = new THREE.Mesh(fingerGeo, fingerMat);
-      finger.rotation.z = Math.PI / 2; // Lie horizontal
-      visualizerGroup.add(finger);
-
-      // Smart Ring wrapped around the finger cylinder
-      const ringGeo = new THREE.TorusGeometry(0.72, 0.12, 16, 64);
-      const ringMat = new THREE.MeshStandardMaterial({
-        color: 0x111319,
-        metalness: 0.95,
-        roughness: 0.15,
-        emissive: 0x00D4C8,
-        emissiveIntensity: 0.2
-      });
-      trackerRing = new THREE.Mesh(ringGeo, ringMat);
-      // Center the ring on the finger
-      trackerRing.rotation.y = Math.PI / 2;
-      visualizerGroup.add(trackerRing);
-
-      // Laser Tracking Ray (visual representation of the 6-axis orientation vector)
-      const laserGeo = new THREE.CylinderGeometry(0.02, 0.02, 2.5, 8);
-      const laserMat = new THREE.MeshBasicMaterial({
-        color: 0x00D4C8,
-        transparent: true,
-        opacity: 0.6
-      });
-      trackerLaser = new THREE.Mesh(laserGeo, laserMat);
-      trackerLaser.position.set(0, 1.8, 0); // pointing outwards
-      visualizerGroup.add(trackerLaser);
+      // Create procedural instrument model
+      buildInstrumentScene();
 
       // Add a grid for visual motion perspective
       const gridHelper = new THREE.GridHelper(10, 10, 0x00D4C8, 0x1A1D26);
       gridHelper.position.y = -1.8;
       liveScene.add(gridHelper);
 
-      // Initial rotation
-      visualizerGroup.rotation.x = 0.2;
-      visualizerGroup.rotation.y = -0.4;
-
-      // Interaction for desktop users (mouse drag rotates)
-      let isDragging = false;
-      let prevMousePos = { x: 0, y: 0 };
-      
+      // Interaction for desktop users (mouse drag mapping)
       container.addEventListener('mousedown', (e) => {
         isDragging = true;
         prevMousePos = { x: e.clientX, y: e.clientY };
@@ -1228,32 +1681,285 @@
 
       container.addEventListener('mousemove', (e) => {
         if (!isDragging || hasSensorsActive) return;
-        const deltaX = e.clientX - prevMousePos.x;
-        const deltaY = e.clientY - prevMousePos.y;
+        const rect = container.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        const y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
         
-        visualizerGroup.rotation.y += deltaX * 0.01;
-        visualizerGroup.rotation.x += deltaY * 0.01;
-        
-        prevMousePos = { x: e.clientX, y: e.clientY };
-        
-        // Feed mock angle based on rotation
-        const deg = Math.round(Math.abs(visualizerGroup.rotation.y * (180 / Math.PI)) % 90);
-        updateLiveAngle(deg);
+        simulatedInputX = x;
+        simulatedInputY = y;
       });
+
+      // Direction states for Schmitt trigger
+      let lastChordZone = -1;
+      let lastPianoKeyPressed = -1;
+      let violinStrokeDirection = 1; // 1 = right, -1 = left
 
       // Animation Loop
       function animateLive() {
         requestAnimationFrame(animateLive);
-        
-        // Idle animation if not tracking physical device or dragging
-        if (!isDragging && !hasSensorsActive && !isSessionActive) {
-          visualizerGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.4;
-          visualizerGroup.rotation.x = 0.2 + Math.cos(Date.now() * 0.001) * 0.1;
-        }
+        if (!liveScene || !visualizerGroup) return;
 
         // Pulse the laser beam intensity
-        trackerLaser.scale.x = 1 + Math.sin(Date.now() * 0.008) * 0.2;
-        trackerLaser.scale.z = trackerLaser.scale.x;
+        if (trackerLaser) {
+          trackerLaser.scale.x = 1 + Math.sin(Date.now() * 0.008) * 0.2;
+          trackerLaser.scale.z = trackerLaser.scale.x;
+        }
+
+        // Gather raw input values (-1 to 1)
+        let xVal = 0;
+        let yVal = 0;
+
+        if (hasSensorsActive) {
+          xVal = THREE.MathUtils.clamp(relativeGamma / 45, -1, 1);
+          yVal = THREE.MathUtils.clamp(relativeBeta / 45, -1, 1);
+        } else if (isDragging) {
+          xVal = simulatedInputX;
+          yVal = simulatedInputY;
+        } else if (isSessionActive) {
+          // Demo automatic motions when session is active and no physical interaction
+          if (currentInstrumentMode === 'violin') {
+            xVal = Math.sin(Date.now() * 0.003);
+            yVal = Math.sin(Date.now() * 0.0006) * 0.15;
+          } else if (currentInstrumentMode === 'guitar') {
+            xVal = Math.sin(Date.now() * 0.0005) * 0.2;
+            yVal = Math.sin(Date.now() * 0.001) * 0.7;
+          } else if (currentInstrumentMode === 'piano') {
+            xVal = Math.sin(Date.now() * 0.0008) * 0.9;
+            yVal = Math.max(-0.2, Math.sin(Date.now() * 0.003) * 0.8);
+          }
+        } else {
+          // Ambient idle state
+          xVal = Math.sin(Date.now() * 0.001) * 0.2;
+          yVal = Math.cos(Date.now() * 0.0015) * 0.1;
+        }
+
+        // Update joint angles based on instrument mode to simulate realistic grasp
+        if (currentInstrumentMode === 'violin') {
+          // --- VIOLIN BOW POSTURE ---
+          if (indexMCP) indexMCP.rotation.set(1.0, 0, 0);
+          if (indexPIP) indexPIP.rotation.x = 1.2;
+          if (indexDIP) indexDIP.rotation.x = 0.8;
+          
+          if (middleMCP) middleMCP.rotation.set(1.1, 0, 0);
+          if (middlePIP) middlePIP.rotation.x = 1.3;
+          if (middleDIP) middleDIP.rotation.x = 0.9;
+          
+          if (ringMCP) ringMCP.rotation.set(1.1, 0, 0);
+          if (ringPIP) ringPIP.rotation.x = 1.3;
+          if (ringDIP) ringDIP.rotation.x = 0.9;
+          
+          if (pinkyMCP) pinkyMCP.rotation.set(0.9, 0, 0);
+          if (pinkyPIP) pinkyPIP.rotation.x = 1.1;
+          if (pinkyDIP) pinkyDIP.rotation.x = 0.7;
+          
+          if (thumbMCP) thumbMCP.rotation.set(0.6, 0, 1.0);
+          if (thumbIP) thumbIP.rotation.x = 0.8;
+          
+          if (violinBow) {
+            violinBow.position.x = xVal * 1.6;
+            violinBow.rotation.z = -yVal * 0.35;
+            
+            // Hand holding the frog
+            visualizerGroup.position.set(violinBow.position.x + 2.0, violinBow.position.y + 0.1, violinBow.position.z - 0.1);
+            visualizerGroup.rotation.set(0.3, -0.6, violinBow.rotation.z - 0.2);
+            
+            const bowX = violinBow.position.x;
+            if (isSessionActive) {
+              if (violinStrokeDirection === 1 && bowX >= 0.8) {
+                violinStrokeDirection = -1;
+                repCount++;
+                document.getElementById('liveReps').innerText = repCount;
+                if (navigator.vibrate) navigator.vibrate(60);
+              } else if (violinStrokeDirection === -1 && bowX <= -0.8) {
+                violinStrokeDirection = 1;
+                repCount++;
+                document.getElementById('liveReps').innerText = repCount;
+                if (navigator.vibrate) navigator.vibrate(60);
+              }
+            }
+            
+            const deviationAngle = Math.round(Math.abs(violinBow.rotation.z * (180 / Math.PI)));
+            updateLiveAngle(deviationAngle);
+          }
+          
+        } else if (currentInstrumentMode === 'guitar') {
+          // --- GUITAR CHORD POSTURE ---
+          const bend = 0.8 + Math.max(0, yVal) * 0.3;
+          if (indexMCP) indexMCP.rotation.set(bend, 0, 0);
+          if (indexPIP) indexPIP.rotation.x = 1.1;
+          if (indexDIP) indexDIP.rotation.x = 0.7;
+          
+          if (middleMCP) middleMCP.rotation.set(1.2, 0, 0);
+          if (middlePIP) middlePIP.rotation.x = 1.4;
+          if (middleDIP) middleDIP.rotation.x = 0.9;
+          
+          if (ringMCP) ringMCP.rotation.set(1.2, 0, 0);
+          if (ringPIP) ringPIP.rotation.x = 1.4;
+          if (ringDIP) ringDIP.rotation.x = 0.9;
+          
+          if (pinkyMCP) pinkyMCP.rotation.set(1.2, 0, 0);
+          if (pinkyPIP) pinkyPIP.rotation.x = 1.4;
+          if (pinkyDIP) pinkyDIP.rotation.x = 0.9;
+          
+          if (thumbMCP) thumbMCP.rotation.set(0.4, 0, 0.9);
+          if (thumbIP) thumbIP.rotation.x = 0.6;
+
+          const angleRad = Math.PI / 6;
+          const localY = yVal * 1.8;
+          
+          visualizerGroup.position.x = xVal * 0.6;
+          visualizerGroup.position.y = localY * Math.cos(angleRad);
+          visualizerGroup.position.z = -1.15 + localY * Math.sin(angleRad);
+          visualizerGroup.rotation.set(0.2, -0.4, xVal * 0.3);
+          
+          let activeChord = 1;
+          if (localY < -0.6) activeChord = 0;
+          else if (localY > 0.6) activeChord = 2;
+          
+          guitarStrings.forEach((string, index) => {
+            let active = false;
+            if (activeChord === 0 && (index === 1 || index === 2 || index === 3)) active = true;
+            else if (activeChord === 1 && (index === 2 || index === 3 || index === 4)) active = true;
+            else if (activeChord === 2 && (index === 3 || index === 4 || index === 5)) active = true;
+            
+            if (active) {
+              string.material.emissive.setHex(0x00D4C8);
+              string.material.emissiveIntensity = 1.2 + Math.sin(Date.now() * 0.01) * 0.3;
+            } else {
+              string.material.emissiveIntensity = THREE.MathUtils.lerp(string.material.emissiveIntensity, 0, 0.1);
+            }
+          });
+          
+          if (isSessionActive && lastChordZone !== activeChord) {
+            if (lastChordZone !== -1) {
+              repCount++;
+              document.getElementById('liveReps').innerText = repCount;
+              if (navigator.vibrate) navigator.vibrate(60);
+            }
+            lastChordZone = activeChord;
+          }
+          
+          const targetY = activeChord === 0 ? -1.2 : (activeChord === 1 ? 0 : 1.2);
+          const fretAccuracy = Math.round(Math.max(0, 100 - Math.abs(localY - targetY) * 60));
+          updateLiveAngle(fretAccuracy);
+          
+        } else if (currentInstrumentMode === 'piano') {
+          // --- PIANO ARTICULATION POSTURE ---
+          const pressVal = Math.max(0, yVal);
+          if (indexMCP) indexMCP.rotation.set(0.2 + pressVal * 0.65, 0, 0);
+          if (indexPIP) indexPIP.rotation.x = 0.3 + pressVal * 0.8;
+          if (indexDIP) indexDIP.rotation.x = 0.2 + pressVal * 0.45;
+          
+          if (middleMCP) middleMCP.rotation.set(0.35, 0, 0);
+          if (middlePIP) middlePIP.rotation.x = 0.45;
+          if (middleDIP) middleDIP.rotation.x = 0.3;
+          
+          if (ringMCP) ringMCP.rotation.set(0.35, 0, 0);
+          if (ringPIP) ringPIP.rotation.x = 0.45;
+          if (ringDIP) ringDIP.rotation.x = 0.3;
+          
+          if (pinkyMCP) pinkyMCP.rotation.set(0.35, 0, 0);
+          if (pinkyPIP) pinkyPIP.rotation.x = 0.45;
+          if (pinkyDIP) pinkyDIP.rotation.x = 0.3;
+          
+          if (thumbMCP) thumbMCP.rotation.set(0.3, 0, 0.8);
+          if (thumbIP) thumbIP.rotation.x = 0.4;
+
+          let activeKeyIndex = 1;
+          if (xVal < -0.35) activeKeyIndex = 0;
+          else if (xVal > 0.35) activeKeyIndex = 2;
+          
+          const targetX = -0.8 + activeKeyIndex * 0.8;
+          visualizerGroup.position.x = THREE.MathUtils.lerp(visualizerGroup.position.x, targetX, 0.15);
+          
+          visualizerGroup.position.y = 0.45 - pressVal * 0.45;
+          visualizerGroup.rotation.set(0.2 - pressVal * 0.2, -0.4, 0);
+          
+          pianoKeys.forEach((key, index) => {
+            const body = key.children[0];
+            if (index === activeKeyIndex) {
+              key.rotation.x = pressVal * 0.12;
+              body.material.emissive.setHex(0x00D4C8);
+              body.material.emissiveIntensity = pressVal * 1.5;
+              
+              if (isSessionActive && pressVal >= 0.5 && lastPianoKeyPressed !== index) {
+                repCount++;
+                document.getElementById('liveReps').innerText = repCount;
+                lastPianoKeyPressed = index;
+                if (navigator.vibrate) navigator.vibrate(60);
+              } else if (pressVal < 0.2 && lastPianoKeyPressed === index) {
+                lastPianoKeyPressed = -1;
+              }
+            } else {
+              key.rotation.x = THREE.MathUtils.lerp(key.rotation.x, 0, 0.2);
+              body.material.emissiveIntensity = THREE.MathUtils.lerp(body.material.emissiveIntensity, 0, 0.2);
+            }
+          });
+          
+          const pressAngle = Math.round(pressVal * 30);
+          updateLiveAngle(pressAngle);
+        }
+
+        // Update Biomechanical HUD Overlay & 3D Pressure Arrow
+        let tensionPct = 0;
+        let pressureForce = 0;
+        let angularStressDeg = 0;
+        let pressIntensity = 0;
+        
+        if (currentInstrumentMode === 'violin') {
+          const deviationAngle = Math.round(Math.abs(violinBow ? violinBow.rotation.z : 0) * (180 / Math.PI));
+          tensionPct = Math.min(100, Math.round(Math.abs(xVal) * 60 + deviationAngle * 1.5));
+          pressureForce = (0.8 + Math.abs(xVal) * 1.8).toFixed(1);
+          angularStressDeg = deviationAngle;
+          pressIntensity = Math.abs(xVal);
+        } else if (currentInstrumentMode === 'guitar') {
+          const angleRad = Math.PI / 6;
+          const localY = yVal * 1.8;
+          const activeChord = localY < -0.6 ? 0 : (localY > 0.6 ? 2 : 1);
+          const targetY = activeChord === 0 ? -1.2 : (activeChord === 1 ? 0 : 1.2);
+          const fretAccuracy = Math.max(0, 100 - Math.round(Math.abs(localY - targetY) * 60));
+          
+          tensionPct = Math.min(100, Math.round(Math.max(0, 100 - fretAccuracy) + Math.abs(xVal) * 45));
+          pressureForce = (1.5 + Math.max(0, yVal) * 5.5).toFixed(1);
+          angularStressDeg = Math.round(Math.abs(xVal) * 24);
+          pressIntensity = Math.max(0, yVal);
+        } else if (currentInstrumentMode === 'piano') {
+          const pressVal = Math.max(0, yVal);
+          tensionPct = Math.round(pressVal * 75 + Math.abs(xVal) * 20);
+          pressureForce = (1.0 + pressVal * 7.0).toFixed(1);
+          angularStressDeg = Math.round(pressVal * 28);
+          pressIntensity = pressVal;
+        }
+        
+        // Update dynamic 3D Arrow length & color
+        if (pressureArrow) {
+          pressureArrow.setLength(0.2 + pressIntensity * 1.1, 0.15, 0.08);
+          if (pressIntensity > 0.6) {
+            pressureArrow.setColor(0xFF3E19); // High tension (orange-red)
+          } else {
+            pressureArrow.setColor(0x00D4C8); // Normal tension (teal)
+          }
+        }
+        
+        // Write to HUD DOM
+        const tensionValEl = document.getElementById('hud-tension-val');
+        const pressureValEl = document.getElementById('hud-pressure-val');
+        const stressValEl = document.getElementById('hud-stress-val');
+        const statusEl = document.getElementById('hud-status-badge');
+        
+        if (tensionValEl) tensionValEl.innerText = `${tensionPct}%`;
+        if (pressureValEl) pressureValEl.innerText = `${pressureForce} N`;
+        if (stressValEl) stressValEl.innerText = `${angularStressDeg}°`;
+        
+        if (statusEl) {
+          if (tensionPct > 65 || angularStressDeg > 18) {
+            statusEl.innerText = '⚠️ WARNING: HIGH STRESS MECHANICS';
+            statusEl.classList.add('warning');
+          } else {
+            statusEl.innerText = '✓ MECHANICS: OPTIMAL';
+            statusEl.classList.remove('warning');
+          }
+        }
 
         liveRenderer.render(liveScene, liveCamera);
       }
@@ -1336,16 +2042,8 @@
         baseGamma = gamma;
       }
 
-      const relativeBeta = beta - baseBeta;
-      const relativeGamma = gamma - baseGamma;
-
-      // Map phone tilt angles directly to 3D visualizer rotation
-      visualizerGroup.rotation.y = THREE.MathUtils.degToRad(relativeGamma * 1.5);
-      visualizerGroup.rotation.x = THREE.MathUtils.degToRad(relativeBeta * 1.2 + 10);
-
-      // Compute range of motion joint angle
-      const calculatedAngle = Math.round(Math.min(Math.max(Math.abs(relativeGamma), 0), 90));
-      updateLiveAngle(calculatedAngle);
+      relativeBeta = beta - baseBeta;
+      relativeGamma = gamma - baseGamma;
     }
 
     function calibrateSensor() {
@@ -1369,7 +2067,11 @@
     let returnedThreshold = 15; // degrees to count as returned
 
     function updateLiveAngle(angle) {
-      document.getElementById('liveAngle').innerText = `${angle}°`;
+      if (currentInstrumentMode === 'guitar') {
+        document.getElementById('liveAngle').innerText = `${angle}%`;
+      } else {
+        document.getElementById('liveAngle').innerText = `${angle}°`;
+      }
       
       // Save data point for session chart
       if (isSessionActive) {
@@ -1378,24 +2080,6 @@
           angleHistory.shift();
         }
         drawTelemetryChart();
-
-        // Track session max
-        if (angle > maxSessionAngle) {
-          maxSessionAngle = angle;
-        }
-
-        // Repetition Detection Algorithm (Schmitt Trigger approach)
-        if (repDirection === 1 && angle >= flexedThreshold) {
-          repDirection = -1; // look for return to extension
-        } else if (repDirection === -1 && angle <= returnedThreshold) {
-          repDirection = 1; // back to flexion
-          repCount++;
-          document.getElementById('liveReps').innerText = repCount;
-          // Play subtle tone audio feedback or haptic vibrator if available
-          if (navigator.vibrate) {
-            navigator.vibrate(60);
-          }
-        }
       }
     }
 
@@ -1425,12 +2109,6 @@
           const mins = Math.floor(sessionSeconds / 60).toString().padStart(2, '0');
           const secs = (sessionSeconds % 60).toString().padStart(2, '0');
           document.getElementById('sessionTimer').innerText = `${mins}:${secs}`;
-          
-          // If desktop user, simulate motion telemetry when not moving mouse
-          if (!hasSensorsActive) {
-            const simulatedAngle = Math.round(35 + Math.sin(sessionSeconds * 0.8) * 30);
-            updateLiveAngle(simulatedAngle);
-          }
         }, 1000);
 
       } else {
